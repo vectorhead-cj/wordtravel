@@ -1,0 +1,70 @@
+# OSX
+#
+.DS_Store
+
+# Xcode (iOS project inside WordTravel/)
+#
+WordTravel/build/
+WordTravel/*.pbxuser
+!WordTravel/default.pbxuser
+WordTravel/*.mode1v3
+!WordTravel/default.mode1v3
+WordTravel/*.mode2v3
+!WordTravel/default.mode2v3
+WordTravel/*.perspectivev3
+!WordTravel/default.perspectivev3
+WordTravel/xcuserdata
+WordTravel/*.xccheckout
+WordTravel/*.moved-aside
+WordTravel/DerivedData
+WordTravel/*.hmap
+WordTravel/*.ipa
+WordTravel/*.xcuserstate
+WordTravel/**/.xcode.env.local
+
+# Android/IntelliJ (inside WordTravel/)
+#
+WordTravel/build/
+WordTravel/.idea
+WordTravel/.gradle
+WordTravel/local.properties
+WordTravel/*.iml
+WordTravel/*.hprof
+WordTravel/.cxx/
+WordTravel/*.keystore
+!WordTravel/debug.keystore
+WordTravel/.kotlin/
+
+# node.js
+#
+WordTravel/node_modules/
+WordTravel/npm-debug.log
+WordTravel/yarn-error.log
+
+# fastlane
+#
+WordTravel/**/fastlane/report.xml
+WordTravel/**/fastlane/Preview.html
+WordTravel/**/fastlane/screenshots
+WordTravel/**/fastlane/test_output
+
+# Bundle artifact
+WordTravel/*.jsbundle
+
+# Ruby / CocoaPods
+WordTravel/**/Pods/
+WordTravel/vendor/bundle/
+
+# Temporary files created by Metro to check the health of the file watcher
+WordTravel/.metro-health-check*
+
+# testing
+WordTravel/coverage
+
+# Yarn
+WordTravel/.yarn/*
+!WordTravel/.yarn/patches
+!WordTravel/.yarn/plugins
+!WordTravel/.yarn/releases
+!WordTravel/.yarn/sdks
+!WordTravel/.yarn/versions
