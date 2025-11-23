@@ -7,17 +7,20 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { Grid as GridType, Cell } from '../engine/types';
+import { Grid as GridType, Cell, GameMode } from '../engine/types';
+import { dictionary } from '../engine/Dictionary';
 
 interface GridProps {
   grid: GridType;
+  mode: GameMode;
   onGridChange: (grid: GridType) => void;
+  onRowValidated: (row: number, isValid: boolean) => void;
 }
 
 const CELL_MARGIN = 4;
 const SIDE_PADDING = 16;
 
-export function Grid({ grid, onGridChange }: GridProps) {
+export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
   const [currentRow, setCurrentRow] = useState(1);
   const [currentCol, setCurrentCol] = useState(1);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -47,6 +50,11 @@ export function Grid({ grid, onGridChange }: GridProps) {
     const letter = text.slice(-1).toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
 
+    const currentCell = grid.cells[currentRow][currentCol];
+    if (mode === 'action' && currentCell.validation !== 'none') {
+      return;
+    }
+
     const newGrid = { ...grid };
     newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
     newGrid.cells[currentRow][currentCol].letter = letter;
@@ -54,7 +62,73 @@ export function Grid({ grid, onGridChange }: GridProps) {
 
     onGridChange(newGrid);
 
-    moveToNextCell();
+    const shouldValidate = checkIfRowComplete(newGrid, currentRow);
+    if (shouldValidate) {
+      validateCurrentRow(newGrid);
+    } else {
+      moveToNextCell();
+    }
+  };
+
+  const checkIfRowComplete = (checkGrid: GridType, row: number): boolean => {
+    for (let col = 0; col < checkGrid.cols; col++) {
+      const cell = checkGrid.cells[row][col];
+      if (cell.accessible && !cell.letter) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const validateCurrentRow = (gridToValidate: GridType) => {
+    let word = '';
+    for (let col = 0; col < gridToValidate.cols; col++) {
+      const cell = gridToValidate.cells[currentRow][col];
+      if (cell.accessible && cell.letter) {
+        word += cell.letter;
+      }
+    }
+
+    const isValid = word.length === 5 && dictionary.isValidWord(word);
+    const validatedGrid = { ...gridToValidate };
+    validatedGrid.cells = gridToValidate.cells.map(row => row.map(cell => ({ ...cell })));
+
+    for (let col = 0; col < validatedGrid.cols; col++) {
+      const cell = validatedGrid.cells[currentRow][col];
+      if (cell.accessible) {
+        cell.validation = isValid ? 'correct' : 'incorrect';
+        if (mode === 'action') {
+          cell.state = 'locked';
+        }
+      }
+    }
+
+    onGridChange(validatedGrid);
+    onRowValidated(currentRow, isValid);
+
+    if (isValid) {
+      setTimeout(() => {
+        moveToNextRow();
+      }, 300);
+    }
+  };
+
+  const moveToNextRow = () => {
+    let nextRow = currentRow + 1;
+    let nextCol = 1;
+
+    while (nextRow < grid.rows) {
+      while (nextCol < grid.cols && !grid.cells[nextRow][nextCol].accessible) {
+        nextCol++;
+      }
+      if (nextCol < grid.cols) {
+        setCurrentRow(nextRow);
+        setCurrentCol(nextCol);
+        return;
+      }
+      nextRow++;
+      nextCol = 1;
+    }
   };
 
   const moveToNextCell = () => {
@@ -86,7 +160,13 @@ export function Grid({ grid, onGridChange }: GridProps) {
   };
 
   const handleCellPress = (row: number, col: number) => {
-    if (!grid.cells[row][col].accessible) return;
+    const cell = grid.cells[row][col];
+    if (!cell.accessible) return;
+    
+    if (mode === 'action' && cell.validation !== 'none') {
+      return;
+    }
+
     setCurrentRow(row);
     setCurrentCol(col);
     textInputRef.current?.focus();
@@ -94,6 +174,13 @@ export function Grid({ grid, onGridChange }: GridProps) {
 
   const renderCell = (cell: Cell, row: number, col: number) => {
     const isActive = row === currentRow && col === currentCol;
+    
+    let validationStyle = {};
+    if (cell.validation === 'correct') {
+      validationStyle = styles.cellCorrect;
+    } else if (cell.validation === 'incorrect') {
+      validationStyle = styles.cellIncorrect;
+    }
     
     return (
       <TouchableOpacity
@@ -103,6 +190,7 @@ export function Grid({ grid, onGridChange }: GridProps) {
           { width: cellSize, height: cellSize },
           cell.accessible ? styles.cellAccessible : styles.cellInaccessible,
           isActive && styles.cellActive,
+          validationStyle,
         ]}
         onPress={() => handleCellPress(row, col)}
         activeOpacity={cell.accessible ? 0.7 : 1}
@@ -187,6 +275,14 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
     borderWidth: 3,
     backgroundColor: '#f0f8ff',
+  },
+  cellCorrect: {
+    borderColor: '#006400',
+    borderWidth: 3,
+  },
+  cellIncorrect: {
+    borderColor: '#8B0000',
+    borderWidth: 3,
   },
   cellContent: {
     width: '100%',

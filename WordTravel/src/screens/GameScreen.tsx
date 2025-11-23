@@ -10,11 +10,22 @@ interface GameScreenProps {
   onBack: () => void;
 }
 
-export function GameScreen({ mode, onGameComplete: _onGameComplete, onBack }: GameScreenProps) {
+export function GameScreen({ mode, onGameComplete, onBack }: GameScreenProps) {
   const [grid, setGrid] = useState<GridType>(() => createMockGrid(mode));
 
   const handleGridChange = (newGrid: GridType) => {
     setGrid(newGrid);
+  };
+
+  const handleRowValidated = (row: number, isValid: boolean) => {
+    if (mode === 'action' && !isValid) {
+      setTimeout(() => {
+        onGameComplete({
+          success: false,
+          score: row - 1,
+        });
+      }, 500);
+    }
   };
 
   return (
@@ -26,7 +37,12 @@ export function GameScreen({ mode, onGameComplete: _onGameComplete, onBack }: Ga
         <Text style={styles.modeText}>{mode} mode</Text>
       </View>
 
-      <Grid grid={grid} onGridChange={handleGridChange} />
+      <Grid
+        grid={grid}
+        mode={mode}
+        onGridChange={handleGridChange}
+        onRowValidated={handleRowValidated}
+      />
     </View>
   );
 }

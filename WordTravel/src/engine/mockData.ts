@@ -16,6 +16,7 @@ export function createMockGrid(mode: GameMode): Grid {
         letter: null,
         state: 'empty',
         accessible: isWordCell,
+        validation: 'none',
       };
     }
   }
