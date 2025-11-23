@@ -5,6 +5,7 @@ export type CellState = 'empty' | 'filled' | 'locked';
 export interface Cell {
   letter: string | null;
   state: CellState;
+  accessible: boolean;
   isCorrect?: boolean;
 }
 

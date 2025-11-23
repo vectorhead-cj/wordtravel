@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { GameMode, GameResult } from '../engine/types';
+import { GameMode, GameResult, Grid as GridType } from '../engine/types';
+import { Grid } from '../components/Grid';
+import { createMockGrid } from '../engine/mockData';
 
 interface GameScreenProps {
   mode: GameMode;
@@ -8,23 +10,23 @@ interface GameScreenProps {
   onBack: () => void;
 }
 
-export function GameScreen({ mode, onGameComplete, onBack }: GameScreenProps) {
+export function GameScreen({ mode, onGameComplete: _onGameComplete, onBack }: GameScreenProps) {
+  const [grid, setGrid] = useState<GridType>(() => createMockGrid(mode));
+
+  const handleGridChange = (newGrid: GridType) => {
+    setGrid(newGrid);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
+        <Text style={styles.modeText}>{mode} mode</Text>
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.placeholder}>
-          Game Screen - {mode} mode
-        </Text>
-        <Text style={styles.subtext}>
-          (Grid and game logic will go here)
-        </Text>
-      </View>
+      <Grid grid={grid} onGridChange={handleGridChange} />
     </View>
   );
 }
@@ -50,19 +52,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#007AFF',
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    fontSize: 24,
+  modeText: {
+    fontSize: 16,
     color: '#333',
-  },
-  subtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
+    marginLeft: 12,
+    fontWeight: '500',
   },
 });
 
