@@ -17,22 +17,17 @@ interface GridProps {
   onRowValidated: (row: number, isValid: boolean) => void;
 }
 
-const CELL_MARGIN = 4;
-const SIDE_PADDING = 16;
-
 export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
   const [currentRow, setCurrentRow] = useState(1);
-  const [currentCol, setCurrentCol] = useState(1);
+  const [currentCol, setCurrentCol] = useState(2);
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
 
   const cellSize = useMemo(() => {
     const screenWidth = Dimensions.get('window').width;
-    const availableWidth = screenWidth - SIDE_PADDING * 2;
-    const totalMarginWidth = CELL_MARGIN * 2 * grid.cols;
-    const cellsTotalWidth = availableWidth - totalMarginWidth;
-    return Math.floor(cellsTotalWidth / grid.cols);
-  }, [grid.cols]);
+    const visibleColumns = 8;
+    return Math.floor(screenWidth / visibleColumns);
+  }, []);
 
   useEffect(() => {
     textInputRef.current?.focus();
@@ -40,7 +35,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
 
   useEffect(() => {
     const screenHeight = Dimensions.get('window').height;
-    const targetY = currentRow * (cellSize + CELL_MARGIN * 2) - screenHeight * 0.25;
+    const targetY = currentRow * cellSize - screenHeight * 0.25;
     scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
   }, [currentRow, cellSize]);
 
@@ -115,7 +110,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
 
   const moveToNextRow = () => {
     let nextRow = currentRow + 1;
-    let nextCol = 1;
+    let nextCol = 2;
 
     while (nextRow < grid.rows) {
       while (nextCol < grid.cols && !grid.cells[nextRow][nextCol].accessible) {
@@ -127,7 +122,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
         return;
       }
       nextRow++;
-      nextCol = 1;
+      nextCol = 2;
     }
   };
 
@@ -219,7 +214,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
         showsVerticalScrollIndicator={true}
       >
         {grid.cells.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
+          <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
             {row.map((cell, colIndex) => renderCell(cell, rowIndex, colIndex))}
           </View>
         ))}
@@ -247,19 +242,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: 20,
     alignItems: 'center',
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: CELL_MARGIN,
   },
   cell: {
-    marginHorizontal: CELL_MARGIN,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 4,
   },
   cellInaccessible: {
     backgroundColor: '#e0e0e0',
