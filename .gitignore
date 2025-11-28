@@ -2,6 +2,9 @@
 #
 .DS_Store
 
+# Dictionary project from separate repository
+wordfreq-master/
+
 # Xcode (iOS project inside WordTravel/)
 #
 WordTravel/build/

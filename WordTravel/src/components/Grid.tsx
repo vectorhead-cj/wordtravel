@@ -204,6 +204,9 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
                   ↓
                 </Text>
               )}
+              <Text style={[styles.debugSymbol, styles.debugBottomRight, debugInfo.uniqueWords ? styles.debugValid : styles.debugInvalid]}>
+                1:1
+              </Text>
             </View>
           )}
         </View>
@@ -341,6 +344,10 @@ const styles = StyleSheet.create({
   debugBottomLeft: {
     bottom: 2,
     left: 2,
+  },
+  debugBottomRight: {
+    bottom: 2,
+    right: 2,
   },
   debugValid: {
     color: '#00AA00',

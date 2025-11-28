@@ -1,7 +1,7 @@
 import { Grid, GameMode, SameLetterPositionTile, SameLetterTile } from './types';
 import { dictionary } from './Dictionary';
 
-const DICTIONARY_CHECK_ENABLED = false;
+const DICTIONARY_CHECK_ENABLED = true;
 
 export function findFirstAccessibleCell(grid: Grid): { row: number; col: number } {
   for (let row = 0; row < grid.rows; row++) {
@@ -118,10 +118,36 @@ export function validateSameLetterTiles(grid: Grid, row: number): boolean {
   return true;
 }
 
+export function validateUniqueWords(grid: Grid, row: number): boolean {
+  const currentWord = getWordFromRow(grid, row);
+  
+  if (currentWord.length === 0) {
+    return true;
+  }
+  
+  for (let otherRow = 0; otherRow < grid.rows; otherRow++) {
+    if (otherRow === row) {
+      continue;
+    }
+    
+    if (!isRowComplete(grid, otherRow)) {
+      continue;
+    }
+    
+    const otherWord = getWordFromRow(grid, otherRow);
+    if (currentWord.toLowerCase() === otherWord.toLowerCase()) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 export interface RowValidationState {
   spelling: boolean;
   sameLetterPosition: boolean;
   sameLetter: boolean;
+  uniqueWords: boolean;
   hasSameLetterPositionTile: boolean;
   hasSameLetterTile: boolean;
 }
@@ -157,6 +183,7 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
     spelling: validateSpelling(grid, row),
     sameLetterPosition: validateSameLetterPositionTiles(grid, row),
     sameLetter: validateSameLetterTiles(grid, row),
+    uniqueWords: validateUniqueWords(grid, row),
     hasSameLetterPositionTile,
     hasSameLetterTile,
   };
@@ -170,8 +197,9 @@ export function validateAndUpdateRow(
   const spellingValid = validateSpelling(gridToValidate, row);
   const sameLetterPositionValid = validateSameLetterPositionTiles(gridToValidate, row);
   const sameLetterValid = validateSameLetterTiles(gridToValidate, row);
+  const uniqueWordsValid = validateUniqueWords(gridToValidate, row);
   
-  const isValid = spellingValid && sameLetterPositionValid && sameLetterValid;
+  const isValid = spellingValid && sameLetterPositionValid && sameLetterValid && uniqueWordsValid;
   
   const validatedGrid = { ...gridToValidate };
   validatedGrid.cells = gridToValidate.cells.map(rowArray => rowArray.map(cell => ({ ...cell })));

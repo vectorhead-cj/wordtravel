@@ -2,6 +2,7 @@ import {
   validateSpelling,
   validateSameLetterPositionTiles,
   validateSameLetterTiles,
+  validateUniqueWords,
   getRowValidationState,
 } from './GameLogic';
 import { Grid, Cell, SameLetterPositionTile, SameLetterTile, RuleTile } from './types';
@@ -353,6 +354,105 @@ describe('GameLogic Validation', () => {
     });
   });
 
+  describe('validateUniqueWords', () => {
+    it('should return true when grid has only one row', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(true);
+    });
+
+    it('should return true when all rows have different words', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('D', true), createTestCell('O', true), createTestCell('G', true)],
+        [createTestCell('B', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(true);
+      expect(validateUniqueWords(grid, 1)).toBe(true);
+      expect(validateUniqueWords(grid, 2)).toBe(true);
+    });
+
+    it('should return false when current row word matches another complete row', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('D', true), createTestCell('O', true), createTestCell('G', true)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 2)).toBe(false);
+    });
+
+    it('should be case insensitive', () => {
+      const grid = createTestGrid([
+        [createTestCell('c', true), createTestCell('a', true), createTestCell('t', true)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 1)).toBe(false);
+    });
+
+    it('should return true when comparing to incomplete rows', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell(null, true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(true);
+    });
+
+    it('should handle incomplete current row (empty word)', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('D', true), createTestCell(null, true), createTestCell('G', true)],
+      ]);
+      expect(validateUniqueWords(grid, 1)).toBe(true);
+    });
+
+    it('should handle rows with inaccessible cells', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', false), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('X', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(true);
+      expect(validateUniqueWords(grid, 1)).toBe(true);
+    });
+
+    it('should return false when word appears in multiple other rows', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('D', true), createTestCell('O', true), createTestCell('G', true)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 2)).toBe(false);
+      expect(validateUniqueWords(grid, 3)).toBe(false);
+    });
+
+    it('should return true for empty word rows', () => {
+      const grid = createTestGrid([
+        [createTestCell(null, true), createTestCell(null, true), createTestCell(null, true)],
+        [createTestCell(null, true), createTestCell(null, true), createTestCell(null, true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(true);
+      expect(validateUniqueWords(grid, 1)).toBe(true);
+    });
+
+    it('should handle words of different lengths', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true), createTestCell(null, false)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true), createTestCell('S', true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(true);
+      expect(validateUniqueWords(grid, 1)).toBe(true);
+    });
+
+    it('should validate first row against subsequently filled rows', () => {
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+      ]);
+      expect(validateUniqueWords(grid, 0)).toBe(false);
+    });
+  });
+
   describe('Combined Rule Validation', () => {
     it('should handle grid with both SameLetterPosition and SameLetter tiles', () => {
       const positionTileTop: SameLetterPositionTile = {
@@ -444,6 +544,7 @@ describe('GameLogic Validation', () => {
       expect(state.spelling).toBe(true);
       expect(state.sameLetterPosition).toBe(true);
       expect(state.sameLetter).toBe(true);
+      expect(state.uniqueWords).toBe(true);
       expect(state.hasSameLetterPositionTile).toBe(false);
       expect(state.hasSameLetterTile).toBe(false);
     });
@@ -500,6 +601,7 @@ describe('GameLogic Validation', () => {
       expect(state.spelling).toBe(true);
       expect(state.sameLetterPosition).toBe(false);
       expect(state.sameLetter).toBe(true);
+      expect(state.uniqueWords).toBe(true);
       expect(state.hasSameLetterPositionTile).toBe(true);
       expect(state.hasSameLetterTile).toBe(false);
     });
