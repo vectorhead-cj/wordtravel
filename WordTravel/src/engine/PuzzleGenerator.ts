@@ -1,4 +1,4 @@
-import { Grid, Cell, PuzzleConfig, WordSlot, SameLetterPositionTile } from './types';
+import { Grid, Cell, PuzzleConfig, WordSlot, SameLetterPositionTile, SameLetterTile } from './types';
 import { PUZZLE_CONFIG } from './config';
 
 export class PuzzleGenerator {
@@ -53,6 +53,7 @@ export class PuzzleGenerator {
     };
     
     this.placeSameLetterPositionTiles(grid, config);
+    this.placeSameLetterTiles(grid, config);
     
     return grid;
   }
@@ -97,6 +98,35 @@ export class PuzzleGenerator {
         grid.cells[randomRow + 1][randomCol].ruleTile = bottomTile;
         
         placedPairs++;
+      }
+    }
+  }
+  
+  private placeSameLetterTiles(grid: Grid, config: PuzzleConfig): void {
+    const targetTiles = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
+    let placedTiles = 0;
+    const maxAttempts = 100;
+    let attempts = 0;
+    
+    while (placedTiles < targetTiles && attempts < maxAttempts) {
+      attempts++;
+      
+      const randomRow = Math.floor(Math.random() * (config.rows - 2));
+      const randomCol = Math.floor(Math.random() * config.cols);
+      
+      const currentCell = grid.cells[randomRow][randomCol];
+      const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
+      
+      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
+        const tile: SameLetterTile = {
+          type: 'sameLetter',
+          constraint: {
+            nextRow: randomRow + 1,
+          },
+        };
+        
+        grid.cells[randomRow][randomCol].ruleTile = tile;
+        placedTiles++;
       }
     }
   }

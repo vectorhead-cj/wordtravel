@@ -17,6 +17,13 @@ export interface SameLetterPositionTile extends RuleTile {
   };
 }
 
+export interface SameLetterTile extends RuleTile {
+  type: 'sameLetter';
+  constraint: {
+    nextRow: number;
+  };
+}
+
 export interface Cell {
   letter: string | null;
   state: CellState;

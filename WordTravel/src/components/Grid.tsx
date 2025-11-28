@@ -9,7 +9,14 @@ import {
   Text,
 } from 'react-native';
 import { Grid as GridType, Cell, GameMode, SameLetterPositionTile } from '../engine/types';
-import { isRowComplete, validateAndUpdateRow, findFirstAccessibleCell, syncPairedCell } from '../engine/GameLogic';
+import { 
+  isRowComplete, 
+  validateAndUpdateRow, 
+  findFirstAccessibleCell, 
+  syncPairedCell,
+  getRowValidationState,
+  RowValidationState 
+} from '../engine/GameLogic';
 
 interface GridProps {
   grid: GridType;
@@ -112,6 +119,26 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
     textInputRef.current?.focus();
   };
 
+  const getDebugInfoForCell = (row: number, col: number): RowValidationState | null => {
+    const rowCells = grid.cells[row];
+    
+    let firstAccessible = -1;
+    let lastAccessible = -1;
+    
+    for (let c = 0; c < rowCells.length; c++) {
+      if (rowCells[c].accessible) {
+        if (firstAccessible === -1) firstAccessible = c;
+        lastAccessible = c;
+      }
+    }
+    
+    if (firstAccessible !== -1 && col === lastAccessible + 1 && !rowCells[col].accessible) {
+      return getRowValidationState(grid, row);
+    }
+    
+    return null;
+  };
+
   const renderCell = (cell: Cell, row: number, col: number) => {
     const isActive = row === currentRow && col === currentCol;
     
@@ -122,9 +149,14 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
       letterColorStyle = styles.letterIncorrect;
     }
     
-    const ruleTile = cell.ruleTile as SameLetterPositionTile | undefined;
-    const showEqualsTop = ruleTile?.type === 'sameLetterPosition' && ruleTile.constraint.position === 'bottom';
-    const showEqualsBottom = ruleTile?.type === 'sameLetterPosition' && ruleTile.constraint.position === 'top';
+    const ruleTile = cell.ruleTile;
+    const showEqualsTop = ruleTile?.type === 'sameLetterPosition' && 
+      (ruleTile as SameLetterPositionTile).constraint.position === 'bottom';
+    const showEqualsBottom = ruleTile?.type === 'sameLetterPosition' && 
+      (ruleTile as SameLetterPositionTile).constraint.position === 'top';
+    const showDownArrow = ruleTile?.type === 'sameLetter';
+    
+    const debugInfo = getDebugInfoForCell(row, col);
     
     return (
       <TouchableOpacity
@@ -153,6 +185,26 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
           )}
           {showEqualsBottom && (
             <Text style={styles.equalsBottom}>=</Text>
+          )}
+          {showDownArrow && (
+            <Text style={styles.downArrow}>↓</Text>
+          )}
+          {debugInfo && (
+            <View style={styles.debugContainer}>
+              <Text style={[styles.debugSymbol, styles.debugTopLeft, debugInfo.spelling ? styles.debugValid : styles.debugInvalid]}>
+                Abc
+              </Text>
+              {debugInfo.hasSameLetterPositionTile && (
+                <Text style={[styles.debugSymbol, styles.debugTopRight, debugInfo.sameLetterPosition ? styles.debugValid : styles.debugInvalid]}>
+                  =
+                </Text>
+              )}
+              {debugInfo.hasSameLetterTile && (
+                <Text style={[styles.debugSymbol, styles.debugBottomLeft, debugInfo.sameLetter ? styles.debugValid : styles.debugInvalid]}>
+                  ↓
+                </Text>
+              )}
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -258,6 +310,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: 'bold',
+  },
+  downArrow: {
+    position: 'absolute',
+    bottom: 2,
+    fontSize: 14,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  debugContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  debugSymbol: {
+    position: 'absolute',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  debugTopLeft: {
+    top: 2,
+    left: 2,
+  },
+  debugTopRight: {
+    top: 2,
+    right: 2,
+  },
+  debugBottomLeft: {
+    bottom: 2,
+    left: 2,
+  },
+  debugValid: {
+    color: '#00AA00',
+  },
+  debugInvalid: {
+    color: '#CC0000',
   },
   hiddenInput: {
     position: 'absolute',
