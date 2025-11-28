@@ -8,6 +8,15 @@ export interface RuleTile {
   constraint: any;
 }
 
+export interface SameLetterPositionTile extends RuleTile {
+  type: 'sameLetterPosition';
+  constraint: {
+    pairedRow: number;
+    pairedCol: number;
+    position: 'top' | 'bottom';
+  };
+}
+
 export interface Cell {
   letter: string | null;
   state: CellState;

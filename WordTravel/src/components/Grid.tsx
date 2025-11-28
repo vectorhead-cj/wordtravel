@@ -6,9 +6,10 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  Text,
 } from 'react-native';
-import { Grid as GridType, Cell, GameMode } from '../engine/types';
-import { isRowComplete, validateAndUpdateRow, findFirstAccessibleCell } from '../engine/GameLogic';
+import { Grid as GridType, Cell, GameMode, SameLetterPositionTile } from '../engine/types';
+import { isRowComplete, validateAndUpdateRow, findFirstAccessibleCell, syncPairedCell } from '../engine/GameLogic';
 
 interface GridProps {
   grid: GridType;
@@ -51,10 +52,12 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
       return;
     }
 
-    const newGrid = { ...grid };
+    let newGrid = { ...grid };
     newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
     newGrid.cells[currentRow][currentCol].letter = letter;
     newGrid.cells[currentRow][currentCol].state = 'filled';
+
+    newGrid = syncPairedCell(newGrid, currentRow, currentCol, letter);
 
     onGridChange(newGrid);
 
@@ -119,6 +122,10 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
       letterColorStyle = styles.letterIncorrect;
     }
     
+    const ruleTile = cell.ruleTile as SameLetterPositionTile | undefined;
+    const showEqualsTop = ruleTile?.type === 'sameLetterPosition' && ruleTile.constraint.position === 'bottom';
+    const showEqualsBottom = ruleTile?.type === 'sameLetterPosition' && ruleTile.constraint.position === 'top';
+    
     return (
       <TouchableOpacity
         key={`${row}-${col}`}
@@ -132,6 +139,9 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
         activeOpacity={cell.accessible ? 0.7 : 1}
       >
         <View style={styles.cellContent}>
+          {showEqualsTop && (
+            <Text style={styles.equalsTop}>=</Text>
+          )}
           {cell.letter && (
             <View style={styles.letterContainer}>
               <TextInput
@@ -140,6 +150,9 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
                 editable={false}
               />
             </View>
+          )}
+          {showEqualsBottom && (
+            <Text style={styles.equalsBottom}>=</Text>
           )}
         </View>
       </TouchableOpacity>
@@ -231,6 +244,20 @@ const styles = StyleSheet.create({
   },
   letterIncorrect: {
     color: '#8B0000',
+  },
+  equalsTop: {
+    position: 'absolute',
+    top: 2,
+    fontSize: 12,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  equalsBottom: {
+    position: 'absolute',
+    bottom: 2,
+    fontSize: 12,
+    color: '#666',
+    fontWeight: 'bold',
   },
   hiddenInput: {
     position: 'absolute',

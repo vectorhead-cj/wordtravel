@@ -1,4 +1,4 @@
-import { Grid, Cell, PuzzleConfig, WordSlot } from './types';
+import { Grid, Cell, PuzzleConfig, WordSlot, SameLetterPositionTile } from './types';
 import { PUZZLE_CONFIG } from './config';
 
 export class PuzzleGenerator {
@@ -46,11 +46,59 @@ export class PuzzleGenerator {
       }
     }
     
-    return {
+    const grid = {
       rows: config.rows,
       cols: config.cols,
       cells,
     };
+    
+    this.placeSameLetterPositionTiles(grid, config);
+    
+    return grid;
+  }
+  
+  private placeSameLetterPositionTiles(grid: Grid, config: PuzzleConfig): void {
+    const targetPairs = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
+    let placedPairs = 0;
+    const maxAttempts = 100;
+    let attempts = 0;
+    
+    while (placedPairs < targetPairs && attempts < maxAttempts) {
+      attempts++;
+      
+      const randomRow = Math.floor(Math.random() * (config.rows - 1));
+      const randomCol = Math.floor(Math.random() * config.cols);
+      
+      const topCell = grid.cells[randomRow][randomCol];
+      const bottomCell = grid.cells[randomRow + 1][randomCol];
+      
+      if (topCell.accessible && bottomCell.accessible && 
+          !topCell.ruleTile && !bottomCell.ruleTile) {
+        
+        const topTile: SameLetterPositionTile = {
+          type: 'sameLetterPosition',
+          constraint: {
+            pairedRow: randomRow + 1,
+            pairedCol: randomCol,
+            position: 'top',
+          },
+        };
+        
+        const bottomTile: SameLetterPositionTile = {
+          type: 'sameLetterPosition',
+          constraint: {
+            pairedRow: randomRow,
+            pairedCol: randomCol,
+            position: 'bottom',
+          },
+        };
+        
+        grid.cells[randomRow][randomCol].ruleTile = topTile;
+        grid.cells[randomRow + 1][randomCol].ruleTile = bottomTile;
+        
+        placedPairs++;
+      }
+    }
   }
   
   private randomWordLength(): number {
