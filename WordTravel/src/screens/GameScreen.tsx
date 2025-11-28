@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GameMode, GameResult, Grid as GridType } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
+import { puzzleGenerator } from '../engine/PuzzleGenerator';
 
 interface GameScreenProps {
   mode: GameMode;
@@ -11,7 +12,13 @@ interface GameScreenProps {
 }
 
 export function GameScreen({ mode, onGameComplete, onBack }: GameScreenProps) {
-  const [grid, setGrid] = useState<GridType>(() => createMockGrid(mode));
+  const [grid, setGrid] = useState<GridType>(() => {
+    if (mode === 'puzzle') {
+      const config = puzzleGenerator.generatePuzzleConfig();
+      return puzzleGenerator.createGridFromConfig(config);
+    }
+    return createMockGrid(mode);
+  });
 
   const handleGridChange = (newGrid: GridType) => {
     setGrid(newGrid);
@@ -51,7 +58,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-	justifyContent: 'center',
   },
   header: {
     height: 56,

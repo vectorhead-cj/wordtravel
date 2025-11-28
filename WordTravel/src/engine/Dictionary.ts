@@ -9,7 +9,9 @@ class Dictionary {
   private initializeTestWords() {
     for (let i = 0; i < 26; i++) {
       const letter = String.fromCharCode(97 + i);
-      this.words.add(letter.repeat(5));
+      for (let length = 3; length <= 6; length++) {
+        this.words.add(letter.repeat(length));
+      }
     }
   }
 

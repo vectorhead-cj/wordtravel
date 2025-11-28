@@ -1,5 +1,16 @@
-import { Grid, Cell, GameMode } from './types';
+import { Grid, GameMode } from './types';
 import { dictionary } from './Dictionary';
+
+export function findFirstAccessibleCell(grid: Grid): { row: number; col: number } {
+  for (let row = 0; row < grid.rows; row++) {
+    for (let col = 0; col < grid.cols; col++) {
+      if (grid.cells[row][col].accessible) {
+        return { row, col };
+      }
+    }
+  }
+  return { row: 0, col: 0 };
+}
 
 export function getWordFromRow(grid: Grid, row: number): string {
   let word = '';
@@ -22,34 +33,32 @@ export function isRowComplete(grid: Grid, row: number): boolean {
   return true;
 }
 
-export function validateWord(word: string): boolean {
-  return dictionary.isValidWord(word);
-}
+export function validateAndUpdateRow(
+  gridToValidate: Grid,
+  row: number,
+  mode: GameMode
+): { validatedGrid: Grid; isValid: boolean } {
+  let word = '';
+  for (let col = 0; col < gridToValidate.cols; col++) {
+    const cell = gridToValidate.cells[row][col];
+    if (cell.accessible && cell.letter) {
+      word += cell.letter;
+    }
+  }
 
-export function validateRow(grid: Grid, row: number): { isValid: boolean; word: string } {
-  const word = getWordFromRow(grid, row);
-  const isValid = validateWord(word);
-  return { isValid, word };
-}
+  const isValid = word.length >= 3 && dictionary.isValidWord(word);
+  const validatedGrid = { ...gridToValidate };
+  validatedGrid.cells = gridToValidate.cells.map(rowArray => rowArray.map(cell => ({ ...cell })));
 
-export function findNextAccessibleRow(grid: Grid, currentRow: number): number | null {
-  for (let row = currentRow + 1; row < grid.rows; row++) {
-    for (let col = 0; col < grid.cols; col++) {
-      if (grid.cells[row][col].accessible) {
-        return row;
+  for (let col = 0; col < validatedGrid.cols; col++) {
+    const cell = validatedGrid.cells[row][col];
+    if (cell.accessible) {
+      cell.validation = isValid ? 'correct' : 'incorrect';
+      if (mode === 'action') {
+        cell.state = 'locked';
       }
     }
   }
-  return null;
-}
 
-export function canEditRow(grid: Grid, row: number, mode: GameMode): boolean {
-  if (mode === 'action') {
-    const hasValidation = grid.cells[row].some(
-      cell => cell.validation !== 'none'
-    );
-    return !hasValidation;
-  }
-  return true;
+  return { validatedGrid, isValid };
 }
-
