@@ -23,9 +23,10 @@ interface GridProps {
   mode: GameMode;
   onGridChange: (grid: GridType) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
+  showRuleHelpers: boolean;
 }
 
-export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
+export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers }: GridProps) {
   const initialPosition = useMemo(() => findFirstAccessibleCell(grid), [grid]);
   const [currentRow, setCurrentRow] = useState(initialPosition.row);
   const [currentCol, setCurrentCol] = useState(initialPosition.col);
@@ -241,7 +242,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
           {showDownArrow && (
             <Text style={styles.downArrow}>↓</Text>
           )}
-          {debugInfo && (
+          {showRuleHelpers && debugInfo && (
             <View style={styles.debugContainer}>
               <Text style={[styles.debugSymbol, styles.debugTopLeft, debugInfo.spelling ? styles.debugValid : styles.debugInvalid]}>
                 Abc

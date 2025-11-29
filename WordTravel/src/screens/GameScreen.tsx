@@ -29,6 +29,7 @@ export function GameScreen({
     }
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });
+  const [showRuleHelpers, setShowRuleHelpers] = useState(false);
 
   useEffect(() => {
     dictionary.initialize();
@@ -56,6 +57,7 @@ export function GameScreen({
         mode={mode}
         onGridChange={handleGridChange}
         onRowValidated={handleRowValidated}
+        showRuleHelpers={showRuleHelpers}
       />
       
       <SafeAreaView style={styles.floatingHeader} pointerEvents="box-none">
@@ -74,7 +76,14 @@ export function GameScreen({
             </View>
           </View>
           
-          <View style={styles.rightSection} />
+          <View style={styles.rightSection}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => setShowRuleHelpers(!showRuleHelpers)}
+            >
+              <Text style={[styles.checkmark, showRuleHelpers && styles.checkmarkActive]}>✓</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -130,6 +139,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#007AFF',
     fontWeight: '600',
+  },
+  checkmark: {
+    fontSize: 24,
+    color: '#999',
+    fontWeight: '600',
+  },
+  checkmarkActive: {
+    color: '#007AFF',
   },
   modePill: {
     height: 44,
