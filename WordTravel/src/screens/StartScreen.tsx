@@ -19,14 +19,14 @@ export function StartScreen({ onSelectMode }: StartScreenProps) {
           style={styles.button}
           onPress={() => onSelectMode('puzzle')}
         >
-          <Text style={styles.buttonText}>Puzzle Mode</Text>
+          <Text style={styles.buttonText}>Puzzle</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.button}
           onPress={() => onSelectMode('action')}
         >
-          <Text style={styles.buttonText}>Action Mode</Text>
+          <Text style={styles.buttonText}>Action</Text>
         </TouchableOpacity>
       </View>
     </View>

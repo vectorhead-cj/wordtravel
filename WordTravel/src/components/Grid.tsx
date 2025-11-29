@@ -44,8 +44,15 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
 
   useEffect(() => {
     const screenHeight = Dimensions.get('window').height;
-    const targetY = currentRow * cellSize - screenHeight * 0.25;
-    scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
+    const rowYPosition = currentRow * cellSize;
+    const screenMiddle = screenHeight * 0.5;
+    
+    // Only scroll if row is below the middle of the screen
+    if (rowYPosition > screenMiddle) {
+      // Position row just above the middle (at 45% of screen height)
+      const targetY = rowYPosition - screenHeight * 0.45;
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
+    }
   }, [currentRow, cellSize]);
 
   const handleKeyPress = (text: string) => {
@@ -318,7 +325,7 @@ const styles = StyleSheet.create({
   cellAccessible: {
     backgroundColor: '#ffffff',
     borderWidth: 0.5,
-	//borderBottomWidth: 6,
+	//borderBottomWidth: 2,
     borderColor: '#666',
   },
   cellActive: {

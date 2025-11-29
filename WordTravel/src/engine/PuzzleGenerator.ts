@@ -2,7 +2,7 @@ import { Grid, Cell, PuzzleConfig, WordSlot, SameLetterPositionTile, SameLetterT
 import { PUZZLE_CONFIG } from './config';
 
 export class PuzzleGenerator {
-  generatePuzzleConfig(): PuzzleConfig {
+  generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1): PuzzleConfig {
     const wordSlots: WordSlot[] = [];
     
     for (let i = 0; i < PUZZLE_CONFIG.WORD_ROWS; i++) {
@@ -10,14 +10,14 @@ export class PuzzleGenerator {
       const { startCol, endCol } = this.calculateWordPosition(length);
       
       wordSlots.push({
-        row: i + 1,
+        row: i + paddingRowsTop,
         length,
         startCol,
         endCol,
       });
     }
     
-    const totalRows = PUZZLE_CONFIG.WORD_ROWS + 2;
+    const totalRows = PUZZLE_CONFIG.WORD_ROWS + paddingRowsTop + paddingRowsBottom;
     
     return {
       wordSlots,
