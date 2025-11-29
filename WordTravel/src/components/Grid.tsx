@@ -17,6 +17,7 @@ import {
   getRowValidationState,
   RowValidationState 
 } from '../engine/GameLogic';
+import { GridBorder } from './GridBorder';
 
 interface GridProps {
   grid: GridType;
@@ -273,11 +274,14 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
       >
-        {grid.cells.map((row, rowIndex) => (
-          <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
-            {row.map((cell, colIndex) => renderCell(cell, rowIndex, colIndex))}
-          </View>
-        ))}
+        <View style={{ width: cellSize * grid.cols, height: cellSize * grid.rows }}>
+          {grid.cells.map((row, rowIndex) => (
+            <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
+              {row.map((cell, colIndex) => renderCell(cell, rowIndex, colIndex))}
+            </View>
+          ))}
+          <GridBorder grid={grid} cellSize={cellSize} />
+        </View>
       </ScrollView>
 
       <TextInput

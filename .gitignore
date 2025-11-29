@@ -24,6 +24,7 @@ WordTravel/*.hmap
 WordTravel/*.ipa
 WordTravel/*.xcuserstate
 WordTravel/**/.xcode.env.local
+WordTravel/ios/build/
 
 # Android/IntelliJ (inside WordTravel/)
 #
