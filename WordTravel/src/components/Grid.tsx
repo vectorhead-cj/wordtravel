@@ -106,6 +106,51 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
     }
   };
 
+  const moveToPreviousCell = () => {
+    let prevRow = currentRow;
+    let prevCol = currentCol - 1;
+
+    while (prevCol >= 0 && !grid.cells[prevRow][prevCol].accessible) {
+      prevCol--;
+    }
+
+    if (prevCol < 0 && prevRow > 0) {
+      prevRow--;
+      prevCol = grid.cols - 1;
+      
+      while (prevRow >= 0) {
+        while (prevCol >= 0 && !grid.cells[prevRow][prevCol].accessible) {
+          prevCol--;
+        }
+        if (prevCol >= 0) break;
+        prevRow--;
+        prevCol = grid.cols - 1;
+      }
+    }
+
+    if (prevRow >= 0 && prevCol >= 0) {
+      setCurrentRow(prevRow);
+      setCurrentCol(prevCol);
+    }
+  };
+
+  const handleBackspace = () => {
+    const currentCell = grid.cells[currentRow][currentCol];
+    if (mode === 'action' && currentCell.validation !== 'none') {
+      return;
+    }
+
+    let newGrid = { ...grid };
+    newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
+    newGrid.cells[currentRow][currentCol].letter = '';
+    newGrid.cells[currentRow][currentCol].state = 'empty';
+
+    newGrid = syncPairedCell(newGrid, currentRow, currentCol, '');
+
+    onGridChange(newGrid);
+    moveToPreviousCell();
+  };
+
   const handleCellPress = (row: number, col: number) => {
     const cell = grid.cells[row][col];
     if (!cell.accessible) return;
@@ -233,6 +278,11 @@ export function Grid({ grid, mode, onGridChange, onRowValidated }: GridProps) {
         ref={textInputRef}
         style={styles.hiddenInput}
         onChangeText={handleKeyPress}
+        onKeyPress={(e) => {
+          if (e.nativeEvent.key === 'Backspace') {
+            handleBackspace();
+          }
+        }}
         value=""
         autoCapitalize="characters"
         autoCorrect={false}
