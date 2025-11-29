@@ -8,7 +8,7 @@ import {
   Dimensions,
   Text,
 } from 'react-native';
-import { Grid as GridType, Cell, GameMode, SameLetterPositionTile } from '../engine/types';
+import { Grid as GridType, Cell, GameMode, SameLetterPositionTile, SameLetterTile } from '../engine/types';
 import { 
   isRowComplete, 
   validateAndUpdateRow, 
@@ -26,7 +26,7 @@ interface GridProps {
   showRuleHelpers: boolean;
 }
 
-export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers }: GridProps) {
+export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers: _showRuleHelpers }: GridProps) {
   const initialPosition = useMemo(() => findFirstAccessibleCell(grid), [grid]);
   const [currentRow, setCurrentRow] = useState(initialPosition.row);
   const [currentCol, setCurrentCol] = useState(initialPosition.col);
@@ -172,35 +172,21 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
     textInputRef.current?.focus();
   };
 
-  const getDebugInfoForCell = (row: number, col: number): RowValidationState | null => {
-    const rowCells = grid.cells[row];
-    
-    let firstAccessible = -1;
-    let lastAccessible = -1;
-    
-    for (let c = 0; c < rowCells.length; c++) {
-      if (rowCells[c].accessible) {
-        if (firstAccessible === -1) firstAccessible = c;
-        lastAccessible = c;
-      }
+  const getRowValidation = (row: number): RowValidationState | null => {
+    if (!isRowComplete(grid, row)) {
+      return null;
     }
-    
-    if (firstAccessible !== -1 && col === lastAccessible + 1 && !rowCells[col].accessible) {
-      return getRowValidationState(grid, row);
-    }
-    
-    return null;
+    return getRowValidationState(grid, row);
+  };
+
+  const isRowValidated = (row: number): boolean => {
+    return grid.cells[row].some(cell => cell.validation !== 'none');
   };
 
   const renderCell = (cell: Cell, row: number, col: number) => {
     const isActive = row === currentRow && col === currentCol;
-    
-    let letterColorStyle = {};
-    if (cell.validation === 'correct') {
-      letterColorStyle = styles.letterCorrect;
-    } else if (cell.validation === 'incorrect') {
-      letterColorStyle = styles.letterIncorrect;
-    }
+    const rowValidation = getRowValidation(row);
+    const validated = isRowValidated(row);
     
     const ruleTile = cell.ruleTile;
     const showEqualsTop = ruleTile?.type === 'sameLetterPosition' && 
@@ -209,7 +195,39 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
       (ruleTile as SameLetterPositionTile).constraint.position === 'top';
     const showDownArrow = ruleTile?.type === 'sameLetter';
     
-    const debugInfo = getDebugInfoForCell(row, col);
+    const getSameLetterPositionColor = () => {
+      if (ruleTile?.type !== 'sameLetterPosition') return styles.symbolGrey;
+      const constraint = (ruleTile as SameLetterPositionTile).constraint;
+      const pairedCell = grid.cells[constraint.pairedRow][constraint.pairedCol];
+      
+      if (!cell.letter || !pairedCell.letter) return styles.symbolGrey;
+      return cell.letter === pairedCell.letter ? styles.symbolGreen : styles.symbolRed;
+    };
+    
+    const getSameLetterColor = () => {
+      if (ruleTile?.type !== 'sameLetter') return styles.symbolGrey;
+      const constraint = (ruleTile as SameLetterTile).constraint;
+      
+      if (!cell.letter) return styles.symbolGrey;
+      
+      const nextRowCells = grid.cells[constraint.nextRow];
+      const hasLetter = nextRowCells.some(c => c.accessible && c.letter === cell.letter);
+      
+      const nextRowComplete = nextRowCells.every(c => !c.accessible || c.letter);
+      if (!nextRowComplete) return styles.symbolGrey;
+      
+      return hasLetter ? styles.symbolGreen : styles.symbolRed;
+    };
+    
+    let letterColorStyle = {};
+    if (validated && rowValidation && cell.accessible) {
+      const allRulesPass = rowValidation.spelling && 
+                           rowValidation.uniqueWords && 
+                           (!rowValidation.hasSameLetterPositionTile || rowValidation.sameLetterPosition) &&
+                           (!rowValidation.hasSameLetterTile || rowValidation.sameLetter);
+      
+      letterColorStyle = allRulesPass ? styles.letterGreen : styles.letterRed;
+    }
     
     return (
       <TouchableOpacity
@@ -225,7 +243,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
       >
         <View style={styles.cellContent}>
           {showEqualsTop && (
-            <Text style={styles.equalsTop}>=</Text>
+            <Text style={[styles.equalsTop, getSameLetterPositionColor()]}>●</Text>
           )}
           {cell.letter && (
             <View style={styles.letterContainer}>
@@ -237,30 +255,10 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
             </View>
           )}
           {showEqualsBottom && (
-            <Text style={styles.equalsBottom}>=</Text>
+            <Text style={[styles.equalsBottom, getSameLetterPositionColor()]}>●</Text>
           )}
           {showDownArrow && (
-            <Text style={styles.downArrow}>↓</Text>
-          )}
-          {showRuleHelpers && debugInfo && (
-            <View style={styles.debugContainer}>
-              <Text style={[styles.debugSymbol, styles.debugTopLeft, debugInfo.spelling ? styles.debugValid : styles.debugInvalid]}>
-                Abc
-              </Text>
-              {debugInfo.hasSameLetterPositionTile && (
-                <Text style={[styles.debugSymbol, styles.debugTopRight, debugInfo.sameLetterPosition ? styles.debugValid : styles.debugInvalid]}>
-                  =
-                </Text>
-              )}
-              {debugInfo.hasSameLetterTile && (
-                <Text style={[styles.debugSymbol, styles.debugBottomLeft, debugInfo.sameLetter ? styles.debugValid : styles.debugInvalid]}>
-                  ↓
-                </Text>
-              )}
-              <Text style={[styles.debugSymbol, styles.debugBottomRight, debugInfo.uniqueWords ? styles.debugValid : styles.debugInvalid]}>
-                1:1
-              </Text>
-            </View>
+            <Text style={[styles.downArrow, getSameLetterColor()]}>○</Text>
           )}
         </View>
       </TouchableOpacity>
@@ -352,66 +350,38 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
   },
-  letterCorrect: {
-    color: '#006400',
+  letterGreen: {
+    color: '#008800',
   },
-  letterIncorrect: {
-    color: '#8B0000',
+  letterRed: {
+    color: '#880000',
+  },
+  symbolGrey: {
+    color: '#999',
+  },
+  symbolGreen: {
+    color: '#008800',
+  },
+  symbolRed: {
+    color: '#880000',
   },
   equalsTop: {
     position: 'absolute',
     top: 2,
-    fontSize: 12,
-    color: '#666',
+    fontSize: 8,
     fontWeight: 'bold',
   },
   equalsBottom: {
     position: 'absolute',
     bottom: 2,
-    fontSize: 12,
-    color: '#666',
+    fontSize: 8,
     fontWeight: 'bold',
   },
   downArrow: {
     position: 'absolute',
     bottom: 2,
-    fontSize: 14,
-    color: '#666',
+    fontSize: 8,
     fontWeight: 'bold',
-  },
-  debugContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-  },
-  debugSymbol: {
-    position: 'absolute',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  debugTopLeft: {
-    top: 2,
-    left: 2,
-  },
-  debugTopRight: {
-    top: 2,
-    right: 2,
-  },
-  debugBottomLeft: {
-    bottom: 2,
-    left: 2,
-  },
-  debugBottomRight: {
-    bottom: 2,
-    right: 2,
-  },
-  debugValid: {
-    color: '#00AA00',
-  },
-  debugInvalid: {
-    color: '#CC0000',
   },
   hiddenInput: {
     position: 'absolute',
