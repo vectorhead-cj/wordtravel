@@ -6,6 +6,7 @@ import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
 import { dictionary } from '../engine/Dictionary';
+import { colors } from '../theme';
 
 interface GameScreenProps {
   mode: GameMode;
@@ -101,7 +102,7 @@ const floatingShadow = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   floatingHeader: {
     position: 'absolute',

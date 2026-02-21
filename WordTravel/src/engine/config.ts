@@ -4,5 +4,6 @@ export const PUZZLE_CONFIG = {
   MAX_WORD_LENGTH: 5,
   GRID_COLS: 9,
   CENTER_COL: 4,
+  MIN_RULE_TILES_PER_WORD: 1,
 } as const;
 

@@ -54,6 +54,7 @@ export class PuzzleGenerator {
     
     this.placeSameLetterPositionTiles(grid, config);
     this.placeSameLetterTiles(grid, config);
+    this.ensureMinimumRuleTiles(grid, config);
     
     return grid;
   }
@@ -131,6 +132,64 @@ export class PuzzleGenerator {
     }
   }
   
+  private countRuleTilesInRow(grid: Grid, row: number): number {
+    let count = 0;
+    for (let col = 0; col < grid.cols; col++) {
+      const cell = grid.cells[row][col];
+      if (cell.accessible && cell.ruleTile) {
+        // Only count master/source tiles
+        if (cell.ruleTile.type === 'sameLetterPosition') {
+          const tile = cell.ruleTile as SameLetterPositionTile;
+          if (tile.constraint.position === 'top') count++;
+        } else if (cell.ruleTile.type === 'sameLetter') {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  private ensureMinimumRuleTiles(grid: Grid, config: PuzzleConfig): void {
+    const min = PUZZLE_CONFIG.MIN_RULE_TILES_PER_WORD;
+    if (min <= 0) return;
+
+    for (const slot of config.wordSlots) {
+      let deficit = min - this.countRuleTilesInRow(grid, slot.row);
+
+      for (let col = slot.startCol; col <= slot.endCol && deficit > 0; col++) {
+        const cell = grid.cells[slot.row][col];
+        if (!cell.accessible || cell.ruleTile) continue;
+
+        // Try ● pair with the row below
+        if (slot.row + 1 < grid.rows) {
+          const below = grid.cells[slot.row + 1][col];
+          if (below.accessible && !below.ruleTile) {
+            cell.ruleTile = {
+              type: 'sameLetterPosition',
+              constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
+            } as SameLetterPositionTile;
+            below.ruleTile = {
+              type: 'sameLetterPosition',
+              constraint: { pairedRow: slot.row, pairedCol: col, position: 'bottom' },
+            } as SameLetterPositionTile;
+            deficit--;
+            continue;
+          }
+        }
+
+        // Try ○ with the next row
+        if (slot.row + 1 < grid.rows &&
+            grid.cells[slot.row + 1].some(c => c.accessible)) {
+          cell.ruleTile = {
+            type: 'sameLetter',
+            constraint: { nextRow: slot.row + 1 },
+          } as SameLetterTile;
+          deficit--;
+        }
+      }
+    }
+  }
+
   private randomWordLength(): number {
     const min = PUZZLE_CONFIG.MIN_WORD_LENGTH;
     const max = PUZZLE_CONFIG.MAX_WORD_LENGTH;

@@ -35,24 +35,6 @@ export function isRowComplete(grid: Grid, row: number): boolean {
   return true;
 }
 
-export function syncPairedCell(grid: Grid, row: number, col: number, letter: string): Grid {
-  const cell = grid.cells[row][col];
-  
-  if (cell.ruleTile && cell.ruleTile.type === 'sameLetterPosition') {
-    const ruleTile = cell.ruleTile as SameLetterPositionTile;
-    const pairedRow = ruleTile.constraint.pairedRow;
-    const pairedCol = ruleTile.constraint.pairedCol;
-    
-    const newGrid = { ...grid };
-    newGrid.cells = grid.cells.map(rowArray => rowArray.map(c => ({ ...c })));
-    newGrid.cells[pairedRow][pairedCol].letter = letter;
-    newGrid.cells[pairedRow][pairedCol].state = 'filled';
-    
-    return newGrid;
-  }
-  
-  return grid;
-}
 
 export function validateSpelling(grid: Grid, row: number): boolean {
   if (!DICTIONARY_CHECK_ENABLED) {
@@ -71,8 +53,10 @@ export function validateSameLetterPositionTiles(grid: Grid, row: number): boolea
       const ruleTile = currentCell.ruleTile as SameLetterPositionTile;
       const pairedRow = ruleTile.constraint.pairedRow;
       const pairedCol = ruleTile.constraint.pairedCol;
+
+      if (!isRowComplete(grid, pairedRow)) continue;
+
       const pairedCell = grid.cells[pairedRow][pairedCol];
-      
       if (currentCell.letter !== pairedCell.letter) {
         return false;
       }
@@ -92,6 +76,8 @@ export function validateSameLetterTiles(grid: Grid, row: number): boolean {
         const targetRow = ruleTile.constraint.nextRow;
         
         if (targetRow === row) {
+          if (!isRowComplete(grid, sourceRow)) continue;
+
           const letterToFind = sourceCell.letter;
           
           if (!letterToFind) {
