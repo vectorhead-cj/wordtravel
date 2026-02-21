@@ -2,10 +2,11 @@ import {
   validateSpelling,
   validateHardMatchTiles,
   validateSoftMatchTiles,
+  validateForbiddenMatchTiles,
   validateUniqueWords,
   getRowValidationState,
 } from './GameLogic';
-import { Grid, Cell, HardMatchTile, SoftMatchTile, RuleTile } from './types';
+import { Grid, Cell, HardMatchTile, SoftMatchTile, ForbiddenMatchTile, RuleTile } from './types';
 import { dictionary } from './Dictionary';
 
 function createTestCell(
@@ -359,6 +360,123 @@ describe('GameLogic Validation', () => {
     });
   });
 
+  describe('validateForbiddenMatchTiles', () => {
+    it('should return true when no rule tiles exist', () => {
+      const grid = createTestGrid([
+        [createTestCell('A', true), createTestCell('B', true)],
+        [createTestCell('C', true), createTestCell('D', true)],
+      ]);
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('should return true when target row does not contain the forbidden letter', () => {
+      const ruleTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile), createTestCell('B', true)],
+        [createTestCell('X', true), createTestCell('Y', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('should return false when target row contains the forbidden letter', () => {
+      const ruleTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile), createTestCell('B', true)],
+        [createTestCell('A', true), createTestCell('X', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(false);
+    });
+
+    it('should return true when validating source row (never fails on source)', () => {
+      const ruleTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile), createTestCell('B', true)],
+        [createTestCell('A', true), createTestCell('X', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
+    });
+
+    it('should skip check when source row is incomplete', () => {
+      const ruleTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile), createTestCell(null, true)],
+        [createTestCell('A', true), createTestCell('X', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('should handle multiple forbidden tiles pointing to same row', () => {
+      const ruleTile1: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const ruleTile2: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile1), createTestCell('B', true, ruleTile2)],
+        [createTestCell('X', true), createTestCell('Y', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('should return false when one of multiple forbidden letters appears', () => {
+      const ruleTile1: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const ruleTile2: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile1), createTestCell('B', true, ruleTile2)],
+        [createTestCell('X', true), createTestCell('B', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(false);
+    });
+
+    it('should ignore inaccessible cells in target row', () => {
+      const ruleTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [createTestCell('A', true, ruleTile), createTestCell('B', true)],
+        [createTestCell('A', false), createTestCell('X', true)],
+      ]);
+
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(true);
+    });
+  });
+
   describe('validateUniqueWords', () => {
     it('should return true when grid has only one row', () => {
       const grid = createTestGrid([
@@ -618,6 +736,7 @@ describe('GameLogic Validation', () => {
       expect(validateSpelling(grid, 0)).toBe(true);
       expect(validateHardMatchTiles(grid, 0)).toBe(true);
       expect(validateSoftMatchTiles(grid, 0)).toBe(true);
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
     });
 
     it('should handle single cell grid', () => {
@@ -625,6 +744,7 @@ describe('GameLogic Validation', () => {
       expect(validateSpelling(grid, 0)).toBe(true);
       expect(validateHardMatchTiles(grid, 0)).toBe(true);
       expect(validateSoftMatchTiles(grid, 0)).toBe(true);
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
     });
 
     it('should handle all inaccessible cells', () => {
@@ -634,6 +754,7 @@ describe('GameLogic Validation', () => {
       expect(validateSpelling(grid, 0)).toBe(true);
       expect(validateHardMatchTiles(grid, 0)).toBe(true);
       expect(validateSoftMatchTiles(grid, 0)).toBe(true);
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
     });
 
     it('should handle row with no letters filled', () => {
@@ -643,6 +764,7 @@ describe('GameLogic Validation', () => {
       expect(validateSpelling(grid, 0)).toBe(true);
       expect(validateHardMatchTiles(grid, 0)).toBe(true);
       expect(validateSoftMatchTiles(grid, 0)).toBe(true);
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
     });
 
     it('should handle case sensitivity', () => {

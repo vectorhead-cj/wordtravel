@@ -1,4 +1,4 @@
-import { Grid, Cell, PuzzleConfig, WordSlot, HardMatchTile, SoftMatchTile } from './types';
+import { Grid, Cell, PuzzleConfig, WordSlot, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
 
 export class PuzzleGenerator {
@@ -54,6 +54,7 @@ export class PuzzleGenerator {
     
     this.placeHardMatchTiles(grid, config);
     this.placeSoftMatchTiles(grid, config);
+    this.placeForbiddenMatchTiles(grid, config);
     this.ensureMinimumRuleTiles(grid, config);
     
     return grid;
@@ -132,6 +133,35 @@ export class PuzzleGenerator {
     }
   }
   
+  private placeForbiddenMatchTiles(grid: Grid, config: PuzzleConfig): void {
+    const targetTiles = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.3);
+    let placedTiles = 0;
+    const maxAttempts = 100;
+    let attempts = 0;
+
+    while (placedTiles < targetTiles && attempts < maxAttempts) {
+      attempts++;
+
+      const randomRow = Math.floor(Math.random() * (config.rows - 2));
+      const randomCol = Math.floor(Math.random() * config.cols);
+
+      const currentCell = grid.cells[randomRow][randomCol];
+      const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
+
+      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
+        const tile: ForbiddenMatchTile = {
+          type: 'forbiddenMatch',
+          constraint: {
+            nextRow: randomRow + 1,
+          },
+        };
+
+        grid.cells[randomRow][randomCol].ruleTile = tile;
+        placedTiles++;
+      }
+    }
+  }
+
   private countRuleTilesInRow(grid: Grid, row: number): number {
     let count = 0;
     for (let col = 0; col < grid.cols; col++) {
@@ -142,6 +172,8 @@ export class PuzzleGenerator {
           const tile = cell.ruleTile as HardMatchTile;
           if (tile.constraint.position === 'top') count++;
         } else if (cell.ruleTile.type === 'softMatch') {
+          count++;
+        } else if (cell.ruleTile.type === 'forbiddenMatch') {
           count++;
         }
       }

@@ -1,4 +1,4 @@
-import { Grid, GameMode, HardMatchTile, SoftMatchTile } from './types';
+import { Grid, GameMode, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { dictionary } from './Dictionary';
 
 const DICTIONARY_CHECK_ENABLED = true;
@@ -101,6 +101,35 @@ export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
   return true;
 }
 
+export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
+  for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+    for (let col = 0; col < grid.cols; col++) {
+      const sourceCell = grid.cells[sourceRow][col];
+
+      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'forbiddenMatch') {
+        const ruleTile = sourceCell.ruleTile as ForbiddenMatchTile;
+        const targetRow = ruleTile.constraint.nextRow;
+
+        if (targetRow === row) {
+          if (!isRowComplete(grid, sourceRow)) continue;
+
+          const forbiddenLetter = sourceCell.letter;
+          if (!forbiddenLetter) continue;
+
+          for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
+            const targetCell = grid.cells[targetRow][targetCol];
+            if (targetCell.accessible && targetCell.letter === forbiddenLetter) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 export function validateUniqueWords(grid: Grid, row: number): boolean {
   const currentWord = getWordFromRow(grid, row);
   
@@ -130,14 +159,17 @@ export interface RowValidationState {
   spelling: boolean;
   hardMatch: boolean;
   softMatch: boolean;
+  forbiddenMatch: boolean;
   uniqueWords: boolean;
   hasHardMatchTile: boolean;
   hasSoftMatchTile: boolean;
+  hasForbiddenMatchTile: boolean;
 }
 
 export function getRowValidationState(grid: Grid, row: number): RowValidationState {
   let hasHardMatchTile = false;
   let hasSoftMatchTile = false;
+  let hasForbiddenMatchTile = false;
   
   for (let col = 0; col < grid.cols; col++) {
     const cell = grid.cells[row][col];
@@ -155,20 +187,26 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
         const ruleTile = sourceCell.ruleTile as SoftMatchTile;
         if (ruleTile.constraint.nextRow === row) {
           hasSoftMatchTile = true;
-          break;
+        }
+      }
+      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'forbiddenMatch') {
+        const ruleTile = sourceCell.ruleTile as ForbiddenMatchTile;
+        if (ruleTile.constraint.nextRow === row) {
+          hasForbiddenMatchTile = true;
         }
       }
     }
-    if (hasSoftMatchTile) break;
   }
   
   return {
     spelling: validateSpelling(grid, row),
     hardMatch: validateHardMatchTiles(grid, row),
     softMatch: validateSoftMatchTiles(grid, row),
+    forbiddenMatch: validateForbiddenMatchTiles(grid, row),
     uniqueWords: validateUniqueWords(grid, row),
     hasHardMatchTile,
     hasSoftMatchTile,
+    hasForbiddenMatchTile,
   };
 }
 
@@ -180,9 +218,10 @@ export function validateAndUpdateRow(
   const spellingValid = validateSpelling(gridToValidate, row);
   const hardMatchValid = validateHardMatchTiles(gridToValidate, row);
   const softMatchValid = validateSoftMatchTiles(gridToValidate, row);
+  const forbiddenMatchValid = validateForbiddenMatchTiles(gridToValidate, row);
   const uniqueWordsValid = validateUniqueWords(gridToValidate, row);
   
-  const isValid = spellingValid && hardMatchValid && softMatchValid && uniqueWordsValid;
+  const isValid = spellingValid && hardMatchValid && softMatchValid && forbiddenMatchValid && uniqueWordsValid;
   
   const validatedGrid = { ...gridToValidate };
   validatedGrid.cells = gridToValidate.cells.map(rowArray => rowArray.map(cell => ({ ...cell })));

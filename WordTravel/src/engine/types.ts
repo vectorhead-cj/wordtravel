@@ -24,6 +24,13 @@ export interface SoftMatchTile extends RuleTile {
   };
 }
 
+export interface ForbiddenMatchTile extends RuleTile {
+  type: 'forbiddenMatch';
+  constraint: {
+    nextRow: number;
+  };
+}
+
 export interface Cell {
   letter: string | null;
   state: CellState;

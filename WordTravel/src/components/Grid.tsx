@@ -8,7 +8,7 @@ import {
   Text,
   Pressable,
 } from 'react-native';
-import { Grid as GridType, Cell, GameMode, HardMatchTile } from '../engine/types';
+import { Grid as GridType, Cell, GameMode, HardMatchTile, ForbiddenMatchTile } from '../engine/types';
 import { 
   isRowComplete, 
   validateAndUpdateRow, 
@@ -30,6 +30,7 @@ function getErrorMessage(state: RowValidationState): string {
   if (!state.uniqueWords) return 'Word already used';
   if (state.hasHardMatchTile && !state.hardMatch) return '● rule not met';
   if (state.hasSoftMatchTile && !state.softMatch) return '○ rule not met';
+  if (state.hasForbiddenMatchTile && !state.forbiddenMatch) return '− rule not met';
   return 'Invalid';
 }
 
@@ -153,6 +154,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
     const showFilledCircle = ruleTile?.type === 'hardMatch' && 
       (ruleTile as HardMatchTile).constraint.position === 'top';
     const showHollowCircle = ruleTile?.type === 'softMatch';
+    const showForbidden = ruleTile?.type === 'forbiddenMatch';
 
     if (!cell.accessible) {
       return (
@@ -192,6 +194,9 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
             )}
             {showHollowCircle && (
               <Text style={styles.ruleIndicator}>○</Text>
+            )}
+            {showForbidden && (
+              <Text style={styles.ruleIndicator}>−</Text>
             )}
           </View>
         </View>
