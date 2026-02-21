@@ -1,4 +1,4 @@
-import { Grid, Cell, PuzzleConfig, WordSlot, SameLetterPositionTile, SameLetterTile } from './types';
+import { Grid, Cell, PuzzleConfig, WordSlot, HardMatchTile, SoftMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
 
 export class PuzzleGenerator {
@@ -52,14 +52,14 @@ export class PuzzleGenerator {
       cells,
     };
     
-    this.placeSameLetterPositionTiles(grid, config);
-    this.placeSameLetterTiles(grid, config);
+    this.placeHardMatchTiles(grid, config);
+    this.placeSoftMatchTiles(grid, config);
     this.ensureMinimumRuleTiles(grid, config);
     
     return grid;
   }
   
-  private placeSameLetterPositionTiles(grid: Grid, config: PuzzleConfig): void {
+  private placeHardMatchTiles(grid: Grid, config: PuzzleConfig): void {
     const targetPairs = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
     let placedPairs = 0;
     const maxAttempts = 100;
@@ -77,8 +77,8 @@ export class PuzzleGenerator {
       if (topCell.accessible && bottomCell.accessible && 
           !topCell.ruleTile && !bottomCell.ruleTile) {
         
-        const topTile: SameLetterPositionTile = {
-          type: 'sameLetterPosition',
+        const topTile: HardMatchTile = {
+          type: 'hardMatch',
           constraint: {
             pairedRow: randomRow + 1,
             pairedCol: randomCol,
@@ -86,8 +86,8 @@ export class PuzzleGenerator {
           },
         };
         
-        const bottomTile: SameLetterPositionTile = {
-          type: 'sameLetterPosition',
+        const bottomTile: HardMatchTile = {
+          type: 'hardMatch',
           constraint: {
             pairedRow: randomRow,
             pairedCol: randomCol,
@@ -103,7 +103,7 @@ export class PuzzleGenerator {
     }
   }
   
-  private placeSameLetterTiles(grid: Grid, config: PuzzleConfig): void {
+  private placeSoftMatchTiles(grid: Grid, config: PuzzleConfig): void {
     const targetTiles = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
     let placedTiles = 0;
     const maxAttempts = 100;
@@ -119,8 +119,8 @@ export class PuzzleGenerator {
       const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
       
       if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
-        const tile: SameLetterTile = {
-          type: 'sameLetter',
+        const tile: SoftMatchTile = {
+          type: 'softMatch',
           constraint: {
             nextRow: randomRow + 1,
           },
@@ -138,10 +138,10 @@ export class PuzzleGenerator {
       const cell = grid.cells[row][col];
       if (cell.accessible && cell.ruleTile) {
         // Only count master/source tiles
-        if (cell.ruleTile.type === 'sameLetterPosition') {
-          const tile = cell.ruleTile as SameLetterPositionTile;
+        if (cell.ruleTile.type === 'hardMatch') {
+          const tile = cell.ruleTile as HardMatchTile;
           if (tile.constraint.position === 'top') count++;
-        } else if (cell.ruleTile.type === 'sameLetter') {
+        } else if (cell.ruleTile.type === 'softMatch') {
           count++;
         }
       }
@@ -165,13 +165,13 @@ export class PuzzleGenerator {
           const below = grid.cells[slot.row + 1][col];
           if (below.accessible && !below.ruleTile) {
             cell.ruleTile = {
-              type: 'sameLetterPosition',
+              type: 'hardMatch',
               constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
-            } as SameLetterPositionTile;
+            } as HardMatchTile;
             below.ruleTile = {
-              type: 'sameLetterPosition',
+              type: 'hardMatch',
               constraint: { pairedRow: slot.row, pairedCol: col, position: 'bottom' },
-            } as SameLetterPositionTile;
+            } as HardMatchTile;
             deficit--;
             continue;
           }
@@ -181,9 +181,9 @@ export class PuzzleGenerator {
         if (slot.row + 1 < grid.rows &&
             grid.cells[slot.row + 1].some(c => c.accessible)) {
           cell.ruleTile = {
-            type: 'sameLetter',
+            type: 'softMatch',
             constraint: { nextRow: slot.row + 1 },
-          } as SameLetterTile;
+          } as SoftMatchTile;
           deficit--;
         }
       }

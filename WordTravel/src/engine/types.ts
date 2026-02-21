@@ -8,8 +8,8 @@ export interface RuleTile {
   constraint: any;
 }
 
-export interface SameLetterPositionTile extends RuleTile {
-  type: 'sameLetterPosition';
+export interface HardMatchTile extends RuleTile {
+  type: 'hardMatch';
   constraint: {
     pairedRow: number;
     pairedCol: number;
@@ -17,8 +17,8 @@ export interface SameLetterPositionTile extends RuleTile {
   };
 }
 
-export interface SameLetterTile extends RuleTile {
-  type: 'sameLetter';
+export interface SoftMatchTile extends RuleTile {
+  type: 'softMatch';
   constraint: {
     nextRow: number;
   };

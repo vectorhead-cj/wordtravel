@@ -1,4 +1,4 @@
-import { Grid, GameMode, SameLetterPositionTile, SameLetterTile } from './types';
+import { Grid, GameMode, HardMatchTile, SoftMatchTile } from './types';
 import { dictionary } from './Dictionary';
 
 const DICTIONARY_CHECK_ENABLED = true;
@@ -35,22 +35,19 @@ export function isRowComplete(grid: Grid, row: number): boolean {
   return true;
 }
 
-
 export function validateSpelling(grid: Grid, row: number): boolean {
-  if (!DICTIONARY_CHECK_ENABLED) {
-    return true;
-  }
-  
+  if (!DICTIONARY_CHECK_ENABLED) return true;
   const word = getWordFromRow(grid, row);
-  return word.length >= 3 && dictionary.isValidWord(word);
+  if (word.length < 3) return true;
+  return dictionary.isValidWord(word);
 }
 
-export function validateSameLetterPositionTiles(grid: Grid, row: number): boolean {
+export function validateHardMatchTiles(grid: Grid, row: number): boolean {
   for (let col = 0; col < grid.cols; col++) {
     const currentCell = grid.cells[row][col];
     
-    if (currentCell.accessible && currentCell.ruleTile?.type === 'sameLetterPosition') {
-      const ruleTile = currentCell.ruleTile as SameLetterPositionTile;
+    if (currentCell.accessible && currentCell.ruleTile?.type === 'hardMatch') {
+      const ruleTile = currentCell.ruleTile as HardMatchTile;
       const pairedRow = ruleTile.constraint.pairedRow;
       const pairedCol = ruleTile.constraint.pairedCol;
 
@@ -66,13 +63,13 @@ export function validateSameLetterPositionTiles(grid: Grid, row: number): boolea
   return true;
 }
 
-export function validateSameLetterTiles(grid: Grid, row: number): boolean {
+export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
       
-      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'sameLetter') {
-        const ruleTile = sourceCell.ruleTile as SameLetterTile;
+      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'softMatch') {
+        const ruleTile = sourceCell.ruleTile as SoftMatchTile;
         const targetRow = ruleTile.constraint.nextRow;
         
         if (targetRow === row) {
@@ -131,22 +128,22 @@ export function validateUniqueWords(grid: Grid, row: number): boolean {
 
 export interface RowValidationState {
   spelling: boolean;
-  sameLetterPosition: boolean;
-  sameLetter: boolean;
+  hardMatch: boolean;
+  softMatch: boolean;
   uniqueWords: boolean;
-  hasSameLetterPositionTile: boolean;
-  hasSameLetterTile: boolean;
+  hasHardMatchTile: boolean;
+  hasSoftMatchTile: boolean;
 }
 
 export function getRowValidationState(grid: Grid, row: number): RowValidationState {
-  let hasSameLetterPositionTile = false;
-  let hasSameLetterTile = false;
+  let hasHardMatchTile = false;
+  let hasSoftMatchTile = false;
   
   for (let col = 0; col < grid.cols; col++) {
     const cell = grid.cells[row][col];
     if (cell.accessible && cell.ruleTile) {
-      if (cell.ruleTile.type === 'sameLetterPosition') {
-        hasSameLetterPositionTile = true;
+      if (cell.ruleTile.type === 'hardMatch') {
+        hasHardMatchTile = true;
       }
     }
   }
@@ -154,24 +151,24 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
-      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'sameLetter') {
-        const ruleTile = sourceCell.ruleTile as SameLetterTile;
+      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'softMatch') {
+        const ruleTile = sourceCell.ruleTile as SoftMatchTile;
         if (ruleTile.constraint.nextRow === row) {
-          hasSameLetterTile = true;
+          hasSoftMatchTile = true;
           break;
         }
       }
     }
-    if (hasSameLetterTile) break;
+    if (hasSoftMatchTile) break;
   }
   
   return {
     spelling: validateSpelling(grid, row),
-    sameLetterPosition: validateSameLetterPositionTiles(grid, row),
-    sameLetter: validateSameLetterTiles(grid, row),
+    hardMatch: validateHardMatchTiles(grid, row),
+    softMatch: validateSoftMatchTiles(grid, row),
     uniqueWords: validateUniqueWords(grid, row),
-    hasSameLetterPositionTile,
-    hasSameLetterTile,
+    hasHardMatchTile,
+    hasSoftMatchTile,
   };
 }
 
@@ -181,11 +178,11 @@ export function validateAndUpdateRow(
   mode: GameMode
 ): { validatedGrid: Grid; isValid: boolean } {
   const spellingValid = validateSpelling(gridToValidate, row);
-  const sameLetterPositionValid = validateSameLetterPositionTiles(gridToValidate, row);
-  const sameLetterValid = validateSameLetterTiles(gridToValidate, row);
+  const hardMatchValid = validateHardMatchTiles(gridToValidate, row);
+  const softMatchValid = validateSoftMatchTiles(gridToValidate, row);
   const uniqueWordsValid = validateUniqueWords(gridToValidate, row);
   
-  const isValid = spellingValid && sameLetterPositionValid && sameLetterValid && uniqueWordsValid;
+  const isValid = spellingValid && hardMatchValid && softMatchValid && uniqueWordsValid;
   
   const validatedGrid = { ...gridToValidate };
   validatedGrid.cells = gridToValidate.cells.map(rowArray => rowArray.map(cell => ({ ...cell })));
