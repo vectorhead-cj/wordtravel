@@ -66,6 +66,7 @@ function findLastFilledCell(grid: GridType, mode: GameMode, before: { row: numbe
 
 export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers: _showRuleHelpers }: GridProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationFailedRow, setValidationFailedRow] = useState<number | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,6 +109,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
   }, [currentPosition, cellSize]);
 
   const handleKeyPress = (text: string) => {
+    if (validationFailedRow !== null) return;
     if (!text || text.length === 0 || !currentPosition) return;
 
     const letter = text.slice(-1).toUpperCase();
@@ -128,17 +130,40 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
       onRowValidated(currentPosition.row, isValid);
 
       if (!isValid) {
+        setValidationFailedRow(currentPosition.row);
         showError(getErrorMessage(validationState));
       }
     }
   };
 
   const handleBackspace = () => {
+    let newGrid = { ...grid };
+    newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
+
+    if (validationFailedRow !== null) {
+      // Reset validation on the failed row
+      for (let col = 0; col < newGrid.cols; col++) {
+        if (newGrid.cells[validationFailedRow][col].accessible) {
+          newGrid.cells[validationFailedRow][col].validation = 'none';
+        }
+      }
+      // Remove the last filled letter in that row
+      for (let col = newGrid.cols - 1; col >= 0; col--) {
+        const cell = newGrid.cells[validationFailedRow][col];
+        if (cell.accessible && cell.letter) {
+          cell.letter = '';
+          cell.state = 'empty';
+          break;
+        }
+      }
+      setValidationFailedRow(null);
+      onGridChange(newGrid);
+      return;
+    }
+
     const target = findLastFilledCell(grid, mode, currentPosition);
     if (!target) return;
 
-    let newGrid = { ...grid };
-    newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
     newGrid.cells[target.row][target.col].letter = '';
     newGrid.cells[target.row][target.col].state = 'empty';
 
