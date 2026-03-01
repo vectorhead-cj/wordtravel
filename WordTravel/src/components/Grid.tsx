@@ -8,11 +8,12 @@ import {
   Text,
   Pressable,
 } from 'react-native';
-import { Grid as GridType, Cell, GameMode, HardMatchTile, ForbiddenMatchTile } from '../engine/types';
+import { Grid as GridType, Cell, GameMode, HardMatchTile } from '../engine/types';
 import { 
   isRowComplete, 
   validateAndUpdateRow, 
   getRowValidationState,
+  countValidNextWords,
   RowValidationState 
 } from '../engine/GameLogic';
 import { colors, layout } from '../theme';
@@ -72,6 +73,14 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentPosition = useMemo(() => findFirstEmptyCell(grid, mode), [grid, mode]);
+
+  const validNextWordCounts = useMemo(() => {
+    const counts: (number | null)[] = grid.cells.map((_, rowIndex) => {
+      const count = countValidNextWords(grid, rowIndex);
+      return count > 0 ? count : null;
+    });
+    return counts;
+  }, [grid]);
 
   const { cellSize, tileSize } = useMemo(() => {
     const screenWidth = Dimensions.get('window').width;
@@ -174,6 +183,16 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
     textInputRef.current?.focus();
   };
 
+  const badgeColumns = useMemo(() => {
+    return grid.cells.map(row => {
+      let lastAccessible = -1;
+      for (let col = 0; col < row.length; col++) {
+        if (row[col].accessible) lastAccessible = col;
+      }
+      return lastAccessible + 1 < grid.cols ? lastAccessible + 1 : -1;
+    });
+  }, [grid]);
+
   const renderCell = (cell: Cell, row: number, col: number) => {
     const ruleTile = cell.ruleTile;
     const showFilledCircle = ruleTile?.type === 'hardMatch' && 
@@ -181,7 +200,22 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
     const showHollowCircle = ruleTile?.type === 'softMatch';
     const showForbidden = ruleTile?.type === 'forbiddenMatch';
 
+    const showBadgeHere = col === badgeColumns[row];
+    const badgeCount = showBadgeHere ? validNextWordCounts[row] : null;
+
     if (!cell.accessible) {
+      if (showBadgeHere) {
+        return (
+          <View
+            key={`${row}-${col}`}
+            style={{ width: cellSize, height: cellSize, justifyContent: 'center', alignItems: 'flex-start', paddingLeft: 4 }}
+          >
+            <Text style={styles.wordCountBadge}>
+              {badgeCount ?? '-'}
+            </Text>
+          </View>
+        );
+      }
       return (
         <View
           key={`${row}-${col}`}
@@ -285,6 +319,11 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+  wordCountBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.ruleIndicatorNeutral,
   },
   cellOuter: {
     justifyContent: 'center',

@@ -1,6 +1,7 @@
 import { Grid, GameMode, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { dictionary } from './Dictionary';
 
+
 const DICTIONARY_CHECK_ENABLED = true;
 
 export function findFirstAccessibleCell(grid: Grid): { row: number; col: number } {
@@ -232,6 +233,117 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
     hasSoftMatchTile,
     hasForbiddenMatchTile,
   };
+}
+
+/**
+ * Counts how many valid dictionary words can be placed in targetRow given
+ * the constraints imposed by already-completed rows. Only considers constraints
+ * from completed rows; returns 0 if targetRow is already complete.
+ *
+ * Constraints evaluated:
+ *   hardMatch  — specific word-index must match a letter from a completed paired row
+ *   softMatch  — a letter from a completed source row must appear somewhere in the word
+ *   forbiddenMatch — a letter from a completed source row must NOT appear in the word
+ *   uniqueWords — word must not already be used in any other completed row
+ */
+export function countValidNextWords(grid: Grid, targetRow: number): number {
+  if (isRowComplete(grid, targetRow)) return 0;
+
+  // Ordered list of accessible column indices in targetRow
+  const accessibleCols: number[] = [];
+  for (let col = 0; col < grid.cols; col++) {
+    if (grid.cells[targetRow][col].accessible) {
+      accessibleCols.push(col);
+    }
+  }
+  const wordLength = accessibleCols.length;
+  if (wordLength === 0) return 0;
+
+  // Words used in other completed rows (uniqueWords constraint)
+  const usedWords = new Set<string>();
+  for (let row = 0; row < grid.rows; row++) {
+    if (row !== targetRow && isRowComplete(grid, row)) {
+      usedWords.add(getWordFromRow(grid, row).toLowerCase());
+    }
+  }
+
+  // hardMatch: wordIndex → required letter (from a completed paired row)
+  const hardMatchConstraints = new Map<number, string>();
+  for (let i = 0; i < accessibleCols.length; i++) {
+    const col = accessibleCols[i];
+    const cell = grid.cells[targetRow][col];
+    if (cell.ruleTile?.type === 'hardMatch') {
+      const { pairedRow, pairedCol } = (cell.ruleTile as HardMatchTile).constraint;
+      if (isRowComplete(grid, pairedRow)) {
+        const letter = grid.cells[pairedRow][pairedCol].letter;
+        if (letter) hardMatchConstraints.set(i, letter.toLowerCase());
+      }
+    }
+  }
+
+  // softMatch / forbiddenMatch: scan completed source rows for rules targeting targetRow
+  const softMatchRequired: string[] = [];
+  const forbiddenLetters = new Set<string>();
+  for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+    if (!isRowComplete(grid, sourceRow)) continue;
+    for (let col = 0; col < grid.cols; col++) {
+      const cell = grid.cells[sourceRow][col];
+      if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
+
+      if (cell.ruleTile.type === 'softMatch') {
+        const ruleTile = cell.ruleTile as SoftMatchTile;
+        if (ruleTile.constraint.nextRow === targetRow) {
+          softMatchRequired.push(cell.letter.toLowerCase());
+        }
+      } else if (cell.ruleTile.type === 'forbiddenMatch') {
+        const ruleTile = cell.ruleTile as ForbiddenMatchTile;
+        if (ruleTile.constraint.nextRow === targetRow) {
+          forbiddenLetters.add(cell.letter.toLowerCase());
+        }
+      }
+    }
+  }
+
+  const hasActiveConstraints =
+    hardMatchConstraints.size > 0 ||
+    softMatchRequired.length > 0 ||
+    forbiddenLetters.size > 0;
+
+  if (!hasActiveConstraints) {
+    return 0;
+  }
+
+  // Find the nearest completed source row to label the debug output
+  let previousWord = '(unknown)';
+  for (let r = targetRow - 1; r >= 0; r--) {
+    if (isRowComplete(grid, r)) {
+      previousWord = getWordFromRow(grid, r);
+      break;
+    }
+  }
+
+  const count = dictionary.getWordsOfLength(wordLength).filter(word => {
+    if (usedWords.has(word)) return false;
+    for (const [idx, letter] of hardMatchConstraints) {
+      if (word[idx] !== letter) return false;
+    }
+    for (const letter of forbiddenLetters) {
+      if (word.includes(letter)) return false;
+    }
+    for (const letter of softMatchRequired) {
+      if (!word.includes(letter)) return false;
+    }
+    return true;
+  }).length;
+
+  console.log(
+    `[WordTravel] possible ${wordLength} letter words that satisfy rules after "${previousWord}": ${count}` +
+    ` [hard=${[...hardMatchConstraints.entries()].map(([i,l])=>`[${i}]=${l}`).join(',')}` +
+    ` soft=${softMatchRequired.join(',')}` +
+    ` forbidden=${[...forbiddenLetters].join(',')}]`
+  );
+
+  return count;
 }
 
 export function validateAndUpdateRow(

@@ -11,5 +11,5 @@ export const layout = {
   tileCornerRadius: 10,
   tileSpacing: 8,
   tileBorderWidth: 2,
-  visibleColumns: 5.5,
+  visibleColumns: 6,
 } as const;

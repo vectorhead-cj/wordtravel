@@ -60,6 +60,12 @@ class Dictionary {
     return total;
   }
 
+  getWordsOfLength(length: number): string[] {
+    const wordSet = this.wordsByLength.get(length);
+    if (!wordSet) return [];
+    return Array.from(wordSet);
+  }
+
   getAvailableLengths(): number[] {
     return Array.from(this.wordsByLength.keys()).sort((a, b) => a - b);
   }
