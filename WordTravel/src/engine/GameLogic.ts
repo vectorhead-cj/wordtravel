@@ -130,6 +130,28 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
   return true;
 }
 
+export function validateNoHardMatchForbiddenConflict(grid: Grid, row: number): boolean {
+  const hardMatchLetters = new Set<string>();
+  const forbiddenMatchLetters = new Set<string>();
+
+  for (let col = 0; col < grid.cols; col++) {
+    const cell = grid.cells[row][col];
+    if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
+
+    if (cell.ruleTile.type === 'hardMatch') {
+      hardMatchLetters.add(cell.letter);
+    } else if (cell.ruleTile.type === 'forbiddenMatch') {
+      forbiddenMatchLetters.add(cell.letter);
+    }
+  }
+
+  for (const letter of hardMatchLetters) {
+    if (forbiddenMatchLetters.has(letter)) return false;
+  }
+
+  return true;
+}
+
 export function validateUniqueWords(grid: Grid, row: number): boolean {
   const currentWord = getWordFromRow(grid, row);
   
@@ -160,6 +182,7 @@ export interface RowValidationState {
   hardMatch: boolean;
   softMatch: boolean;
   forbiddenMatch: boolean;
+  noHardMatchForbiddenConflict: boolean;
   uniqueWords: boolean;
   hasHardMatchTile: boolean;
   hasSoftMatchTile: boolean;
@@ -203,6 +226,7 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
     hardMatch: validateHardMatchTiles(grid, row),
     softMatch: validateSoftMatchTiles(grid, row),
     forbiddenMatch: validateForbiddenMatchTiles(grid, row),
+    noHardMatchForbiddenConflict: validateNoHardMatchForbiddenConflict(grid, row),
     uniqueWords: validateUniqueWords(grid, row),
     hasHardMatchTile,
     hasSoftMatchTile,
@@ -219,9 +243,10 @@ export function validateAndUpdateRow(
   const hardMatchValid = validateHardMatchTiles(gridToValidate, row);
   const softMatchValid = validateSoftMatchTiles(gridToValidate, row);
   const forbiddenMatchValid = validateForbiddenMatchTiles(gridToValidate, row);
+  const noConflictValid = validateNoHardMatchForbiddenConflict(gridToValidate, row);
   const uniqueWordsValid = validateUniqueWords(gridToValidate, row);
-  
-  const isValid = spellingValid && hardMatchValid && softMatchValid && forbiddenMatchValid && uniqueWordsValid;
+
+  const isValid = spellingValid && hardMatchValid && softMatchValid && forbiddenMatchValid && noConflictValid && uniqueWordsValid;
   
   const validatedGrid = { ...gridToValidate };
   validatedGrid.cells = gridToValidate.cells.map(rowArray => rowArray.map(cell => ({ ...cell })));

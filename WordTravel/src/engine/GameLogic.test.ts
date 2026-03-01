@@ -3,6 +3,7 @@ import {
   validateHardMatchTiles,
   validateSoftMatchTiles,
   validateForbiddenMatchTiles,
+  validateNoHardMatchForbiddenConflict,
   validateUniqueWords,
   getRowValidationState,
 } from './GameLogic';
@@ -727,6 +728,123 @@ describe('GameLogic Validation', () => {
       expect(state.uniqueWords).toBe(true);
       expect(state.hasHardMatchTile).toBe(true);
       expect(state.hasSoftMatchTile).toBe(false);
+    });
+  });
+
+  describe('validateNoHardMatchForbiddenConflict', () => {
+    it('should return true when no rule tiles exist', () => {
+      const grid = createTestGrid([
+        [createTestCell('A', true), createTestCell('B', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
+    });
+
+    it('should return true when only hardMatch tiles exist', () => {
+      const tile: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true, tile), createTestCell('B', true)],
+        [createTestCell('A', true), createTestCell('C', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
+    });
+
+    it('should return true when only forbiddenMatch tiles exist', () => {
+      const tile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true, tile), createTestCell('B', true)],
+        [createTestCell('X', true), createTestCell('Y', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
+    });
+
+    it('should return true when hardMatch and forbiddenMatch letters are different', () => {
+      const hardTile: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true, hardTile), createTestCell('B', true, forbiddenTile)],
+        [createTestCell('A', true), createTestCell('X', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
+    });
+
+    it('should return false when hardMatch and forbiddenMatch share the same letter', () => {
+      const hardTile: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true, hardTile), createTestCell('A', true, forbiddenTile)],
+        [createTestCell('A', true), createTestCell('X', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(false);
+    });
+
+    it('should only check the specified row, not other rows', () => {
+      const hardTile: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 0, pairedCol: 0, position: 'bottom' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 2 },
+      };
+      // Conflict is on row 0, not row 1
+      const grid = createTestGrid([
+        [createTestCell('A', true, hardTile), createTestCell('A', true, forbiddenTile)],
+        [createTestCell('B', true), createTestCell('C', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(false);
+      expect(validateNoHardMatchForbiddenConflict(grid, 1)).toBe(true);
+    });
+
+    it('should ignore cells with no letter', () => {
+      const hardTile: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      // Neither cell has a letter yet — no conflict possible
+      const grid = createTestGrid([
+        [createTestCell(null, true, hardTile), createTestCell(null, true, forbiddenTile)],
+        [createTestCell('X', true), createTestCell('Y', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
+    });
+
+    it('should ignore inaccessible cells', () => {
+      const hardTile: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', false, hardTile), createTestCell('A', true, forbiddenTile)],
+        [createTestCell('X', true), createTestCell('Y', true)],
+      ]);
+      // hardMatch cell is inaccessible, so only 'A' from forbiddenMatch — no conflict
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
     });
   });
 
