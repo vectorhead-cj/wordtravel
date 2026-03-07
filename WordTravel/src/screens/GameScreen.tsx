@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GameMode, GameResult, Grid as GridType } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
-import { dictionary } from '../engine/Dictionary';
 import { colors } from '../theme';
 
 interface GameScreenProps {
@@ -31,10 +30,6 @@ export function GameScreen({
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });
   const [showRuleHelpers, setShowRuleHelpers] = useState(false);
-
-  useEffect(() => {
-    dictionary.initialize();
-  }, []);
 
   const handleGridChange = (newGrid: GridType) => {
     setGrid(newGrid);
