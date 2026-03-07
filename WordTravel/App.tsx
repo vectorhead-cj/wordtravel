@@ -8,6 +8,7 @@ import { StartScreen } from './src/screens/StartScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import { GameMode, GameResult } from './src/engine/types';
+import { colors } from './src/theme';
 
 type Screen = 'start' | 'game' | 'result';
 
@@ -76,7 +77,7 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
 });
 

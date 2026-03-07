@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GameMode } from '../engine/types';
+import { colors } from '../theme';
 
 interface StartScreenProps {
   onSelectMode: (mode: GameMode) => void;
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
   },
   logoContainer: {
@@ -48,11 +49,11 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.textPrimary,
   },
   tagline: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 8,
   },
   buttonsContainer: {
@@ -60,14 +61,14 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.accent,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 16,
   },
   buttonText: {
-    color: '#fff',
+    color: colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },

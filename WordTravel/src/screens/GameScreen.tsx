@@ -87,7 +87,7 @@ export function GameScreen({
 }
 
 const floatingShadow = {
-  shadowColor: '#000',
+  shadowColor: colors.shadow,
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.25,
   shadowRadius: 4,
@@ -126,37 +126,37 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     ...floatingShadow,
   },
   backArrow: {
     fontSize: 24,
-    color: '#007AFF',
+    color: colors.accent,
     fontWeight: '600',
   },
   checkmark: {
     fontSize: 24,
-    color: '#999',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   checkmarkActive: {
-    color: '#007AFF',
+    color: colors.accent,
   },
   modePill: {
     height: 44,
     paddingHorizontal: 20,
     justifyContent: 'center',
     borderRadius: 100,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     ...floatingShadow,
   },
   modeText: {
     fontSize: 16,
-    color: '#333',
+    color: colors.textPrimary,
     fontWeight: '600',
     flexShrink: 0,
   },

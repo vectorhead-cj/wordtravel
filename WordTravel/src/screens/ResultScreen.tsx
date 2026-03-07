@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GameResult } from '../engine/types';
+import { colors } from '../theme';
 
 interface ResultScreenProps {
   result: GameResult;
@@ -33,13 +34,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
   },
   title: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.textPrimary,
     marginBottom: 40,
   },
   statsContainer: {
@@ -47,18 +48,18 @@ const styles = StyleSheet.create({
   },
   stat: {
     fontSize: 20,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 12,
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.accent,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#fff',
+    color: colors.textOnAccent,
     fontSize: 18,
     fontWeight: '600',
   },
