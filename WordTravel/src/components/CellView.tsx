@@ -29,7 +29,11 @@ export function CellView({ cell, cellSize, tileSize, badgeCount }: CellViewProps
 
   return (
     <View style={[styles.cellOuter, { width: cellSize, height: cellSize }]}>
-      <View style={[styles.tile, { width: tileSize, height: tileSize, borderRadius: layout.tileCornerRadius }]}>
+      <View style={[
+        styles.tile,
+        { width: tileSize, height: tileSize, borderRadius: layout.tileCornerRadius },
+        cell.fixed && { backgroundColor: colors.background },
+      ]}>
         <View style={styles.cellContent}>
           {cell.letter && (
             <View style={styles.letterContainer}>

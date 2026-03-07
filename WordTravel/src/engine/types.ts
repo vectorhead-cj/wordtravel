@@ -34,6 +34,7 @@ export interface Cell {
   accessible: boolean;
   validation: ValidationState;
   ruleTile?: RuleTile;
+  fixed?: boolean;
 }
 
 export interface WordSlot {
@@ -55,13 +56,17 @@ export interface Grid {
   cells: Cell[][];
 }
 
+function cloneRuleTile(tile: RuleTile): RuleTile {
+  return { ...tile, constraint: { ...tile.constraint } } as RuleTile;
+}
+
 export function cloneGrid(grid: Grid): Grid {
   return {
     ...grid,
     cells: grid.cells.map(row =>
       row.map(cell => ({
         ...cell,
-        ruleTile: cell.ruleTile ? { ...cell.ruleTile, constraint: { ...cell.ruleTile.constraint } } : undefined,
+        ruleTile: cell.ruleTile ? cloneRuleTile(cell.ruleTile) : undefined,
       }))
     ),
   };

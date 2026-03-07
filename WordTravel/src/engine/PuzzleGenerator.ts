@@ -52,6 +52,7 @@ export class PuzzleGenerator {
       cells,
     };
     
+    this.placeFixedLetterTiles(grid, config);
     this.placeHardMatchTiles(grid, config);
     this.placeSoftMatchTiles(grid, config);
     this.placeForbiddenMatchTiles(grid, config);
@@ -60,6 +61,41 @@ export class PuzzleGenerator {
     return grid;
   }
   
+  private placeFixedLetterTiles(grid: Grid, _config: PuzzleConfig): void {
+    const target = PUZZLE_CONFIG.FIXED_TILES_PER_PUZZLE;
+    const candidates: { row: number; col: number }[] = [];
+
+    for (let row = 0; row < grid.rows; row++) {
+      for (let col = 0; col < grid.cols; col++) {
+        if (grid.cells[row][col].accessible) {
+          candidates.push({ row, col });
+        }
+      }
+    }
+
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+
+    const alphabet = PUZZLE_CONFIG.FIXED_LETTER_ALPHABET;
+    const usedRows = new Set<number>();
+    let placed = 0;
+
+    for (const { row, col } of candidates) {
+      if (placed >= target) break;
+      if (usedRows.has(row)) continue;
+
+      const letter = alphabet[Math.floor(Math.random() * alphabet.length)];
+      grid.cells[row][col].letter = letter;
+      grid.cells[row][col].state = 'filled';
+      grid.cells[row][col].fixed = true;
+
+      usedRows.add(row);
+      placed++;
+    }
+  }
+
   private placeHardMatchTiles(grid: Grid, config: PuzzleConfig): void {
     const targetPairs = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
     let placedPairs = 0;

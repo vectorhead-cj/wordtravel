@@ -798,19 +798,68 @@ describe('GameLogic Validation', () => {
     it('should only check the specified row, not other rows', () => {
       const hardTile: HardMatchTile = {
         type: 'hardMatch',
-        constraint: { pairedRow: 0, pairedCol: 0, position: 'bottom' },
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
       };
       const forbiddenTile: ForbiddenMatchTile = {
         type: 'forbiddenMatch',
-        constraint: { nextRow: 2 },
+        constraint: { nextRow: 1 },
       };
-      // Conflict is on row 0, not row 1
       const grid = createTestGrid([
         [createTestCell('A', true, hardTile), createTestCell('A', true, forbiddenTile)],
         [createTestCell('B', true), createTestCell('C', true)],
       ]);
       expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(false);
       expect(validateNoHardMatchForbiddenConflict(grid, 1)).toBe(true);
+    });
+
+    it('should allow same letter on hardMatch-bottom and forbiddenMatch (no shared target row)', () => {
+      const hardBottom: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 0, pairedCol: 0, position: 'bottom' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 2 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('T', true), createTestCell('R', true), createTestCell('A', true), createTestCell('M', true)],
+        [createTestCell('T', true, hardBottom), createTestCell('A', true), createTestCell('R', true), createTestCell('T', true, forbiddenTile)],
+        [createTestCell('X', true), createTestCell('Y', true), createTestCell('Z', true), createTestCell('W', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 1)).toBe(true);
+    });
+
+    it('should return false only when hardMatch-top and forbiddenMatch target the same row with same letter', () => {
+      const hardTop: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 1 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true, hardTop), createTestCell('A', true, forbiddenTile)],
+        [createTestCell('A', true), createTestCell('X', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(false);
+    });
+
+    it('should allow hardMatch-top and forbiddenMatch with same letter targeting different rows', () => {
+      const hardTop: HardMatchTile = {
+        type: 'hardMatch',
+        constraint: { pairedRow: 1, pairedCol: 0, position: 'top' },
+      };
+      const forbiddenTile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { nextRow: 2 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true, hardTop), createTestCell('A', true, forbiddenTile)],
+        [createTestCell('A', true), createTestCell('X', true)],
+        [createTestCell('Y', true), createTestCell('Z', true)],
+      ]);
+      expect(validateNoHardMatchForbiddenConflict(grid, 0)).toBe(true);
     });
 
     it('should ignore cells with no letter', () => {

@@ -128,22 +128,32 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
 }
 
 export function validateNoHardMatchForbiddenConflict(grid: Grid, row: number): boolean {
-  const hardMatchLetters = new Set<string>();
-  const forbiddenMatchLetters = new Set<string>();
+  // Collect letters forced INTO a target row by hardMatch-top tiles
+  const forcedByHardMatch = new Map<number, Set<string>>();
+  // Collect letters BANNED FROM a target row by forbiddenMatch tiles
+  const bannedByForbidden = new Map<number, Set<string>>();
 
   for (let col = 0; col < grid.cols; col++) {
     const cell = grid.cells[row][col];
     if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
 
-    if (cell.ruleTile.type === 'hardMatch') {
-      hardMatchLetters.add(cell.letter);
+    if (cell.ruleTile.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
+      const targetRow = cell.ruleTile.constraint.pairedRow;
+      if (!forcedByHardMatch.has(targetRow)) forcedByHardMatch.set(targetRow, new Set());
+      forcedByHardMatch.get(targetRow)!.add(cell.letter);
     } else if (cell.ruleTile.type === 'forbiddenMatch') {
-      forbiddenMatchLetters.add(cell.letter);
+      const targetRow = cell.ruleTile.constraint.nextRow;
+      if (!bannedByForbidden.has(targetRow)) bannedByForbidden.set(targetRow, new Set());
+      bannedByForbidden.get(targetRow)!.add(cell.letter);
     }
   }
 
-  for (const letter of hardMatchLetters) {
-    if (forbiddenMatchLetters.has(letter)) return false;
+  for (const [targetRow, forced] of forcedByHardMatch) {
+    const banned = bannedByForbidden.get(targetRow);
+    if (!banned) continue;
+    for (const letter of forced) {
+      if (banned.has(letter)) return false;
+    }
   }
 
   return true;
@@ -261,11 +271,17 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
     }
   }
 
-  // hardMatch: wordIndex → required letter (from a completed paired row)
+  // wordIndex → required letter (from fixed tiles or hardMatch with a completed paired row)
   const hardMatchConstraints = new Map<number, string>();
   for (let i = 0; i < accessibleCols.length; i++) {
     const col = accessibleCols[i];
     const cell = grid.cells[targetRow][col];
+
+    if (cell.fixed && cell.letter) {
+      hardMatchConstraints.set(i, cell.letter.toLowerCase());
+      continue;
+    }
+
     if (cell.ruleTile?.type === 'hardMatch') {
       const { pairedRow, pairedCol } = cell.ruleTile.constraint;
       if (isRowComplete(grid, pairedRow)) {

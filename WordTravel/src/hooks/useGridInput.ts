@@ -37,7 +37,7 @@ function findLastFilledCell(grid: Grid, mode: GameMode, before: { row: number; c
         return found;
       }
       const cell = grid.cells[row][col];
-      if (!cell.accessible || !cell.letter) continue;
+      if (!cell.accessible || !cell.letter || cell.fixed) continue;
       if (mode === 'action' && cell.validation !== 'none') continue;
       found = { row, col };
     }
@@ -102,7 +102,7 @@ export function useGridInput({ grid, mode, onGridChange, onRowValidated }: UseGr
       }
       for (let col = newGrid.cols - 1; col >= 0; col--) {
         const cell = newGrid.cells[validationFailedRow][col];
-        if (cell.accessible && cell.letter) {
+        if (cell.accessible && cell.letter && !cell.fixed) {
           cell.letter = '';
           cell.state = 'empty';
           break;
