@@ -222,9 +222,17 @@ export class PuzzleGenerator {
   }
 
   private randomWordLength(): number {
-    const min = PUZZLE_CONFIG.MIN_WORD_LENGTH;
-    const max = PUZZLE_CONFIG.MAX_WORD_LENGTH;
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    const weights = PUZZLE_CONFIG.WORD_LENGTH_WEIGHTS;
+    const entries = Object.entries(weights).map(([len, w]) => [Number(len), w] as const);
+    const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
+    let roll = Math.random() * totalWeight;
+
+    for (const [length, weight] of entries) {
+      roll -= weight;
+      if (roll <= 0) return length;
+    }
+
+    return entries[entries.length - 1][0];
   }
   
   private calculateWordPosition(length: number): { startCol: number; endCol: number } {
