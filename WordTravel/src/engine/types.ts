@@ -55,6 +55,18 @@ export interface Grid {
   cells: Cell[][];
 }
 
+export function cloneGrid(grid: Grid): Grid {
+  return {
+    ...grid,
+    cells: grid.cells.map(row =>
+      row.map(cell => ({
+        ...cell,
+        ruleTile: cell.ruleTile ? { ...cell.ruleTile, constraint: { ...cell.ruleTile.constraint } } : undefined,
+      }))
+    ),
+  };
+}
+
 export interface GameState {
   mode: GameMode;
   grid: Grid;

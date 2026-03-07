@@ -1,4 +1,4 @@
-import { Grid, GameMode } from './types';
+import { Grid, GameMode, cloneGrid } from './types';
 import { dictionary } from './Dictionary';
 
 
@@ -352,8 +352,7 @@ export function validateAndUpdateRow(
 
   const isValid = spellingValid && hardMatchValid && softMatchValid && forbiddenMatchValid && noConflictValid && uniqueWordsValid;
   
-  const validatedGrid = { ...gridToValidate };
-  validatedGrid.cells = gridToValidate.cells.map(rowArray => rowArray.map(cell => ({ ...cell })));
+  const validatedGrid = cloneGrid(gridToValidate);
 
   for (let col = 0; col < validatedGrid.cols; col++) {
     const cell = validatedGrid.cells[row][col];

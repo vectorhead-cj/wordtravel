@@ -8,7 +8,7 @@ import {
   Text,
   Pressable,
 } from 'react-native';
-import { Grid as GridType, Cell, GameMode } from '../engine/types';
+import { Grid as GridType, Cell, GameMode, cloneGrid } from '../engine/types';
 import { 
   isRowComplete, 
   validateAndUpdateRow, 
@@ -124,8 +124,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
     const letter = text.slice(-1).toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
 
-    let newGrid = { ...grid };
-    newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
+    const newGrid = cloneGrid(grid);
     newGrid.cells[currentPosition.row][currentPosition.col].letter = letter;
     newGrid.cells[currentPosition.row][currentPosition.col].state = 'filled';
 
@@ -146,8 +145,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
   };
 
   const handleBackspace = () => {
-    let newGrid = { ...grid };
-    newGrid.cells = grid.cells.map(row => row.map(cell => ({ ...cell })));
+    const newGrid = cloneGrid(grid);
 
     if (validationFailedRow !== null) {
       // Reset validation on the failed row
