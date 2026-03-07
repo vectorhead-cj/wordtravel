@@ -169,8 +169,7 @@ export class PuzzleGenerator {
       if (cell.accessible && cell.ruleTile) {
         // Only count master/source tiles
         if (cell.ruleTile.type === 'hardMatch') {
-          const tile = cell.ruleTile as HardMatchTile;
-          if (tile.constraint.position === 'top') count++;
+          if (cell.ruleTile.constraint.position === 'top') count++;
         } else if (cell.ruleTile.type === 'softMatch') {
           count++;
         } else if (cell.ruleTile.type === 'forbiddenMatch') {
@@ -199,11 +198,11 @@ export class PuzzleGenerator {
             cell.ruleTile = {
               type: 'hardMatch',
               constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
-            } as HardMatchTile;
+            };
             below.ruleTile = {
               type: 'hardMatch',
               constraint: { pairedRow: slot.row, pairedCol: col, position: 'bottom' },
-            } as HardMatchTile;
+            };
             deficit--;
             continue;
           }
@@ -215,7 +214,7 @@ export class PuzzleGenerator {
           cell.ruleTile = {
             type: 'softMatch',
             constraint: { nextRow: slot.row + 1 },
-          } as SoftMatchTile;
+          };
           deficit--;
         }
       }

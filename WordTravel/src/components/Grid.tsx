@@ -8,7 +8,7 @@ import {
   Text,
   Pressable,
 } from 'react-native';
-import { Grid as GridType, Cell, GameMode, HardMatchTile } from '../engine/types';
+import { Grid as GridType, Cell, GameMode } from '../engine/types';
 import { 
   isRowComplete, 
   validateAndUpdateRow, 
@@ -196,7 +196,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
   const renderCell = (cell: Cell, row: number, col: number) => {
     const ruleTile = cell.ruleTile;
     const showFilledCircle = ruleTile?.type === 'hardMatch' && 
-      (ruleTile as HardMatchTile).constraint.position === 'top';
+      ruleTile.constraint.position === 'top';
     const showHollowCircle = ruleTile?.type === 'softMatch';
     const showForbidden = ruleTile?.type === 'forbiddenMatch';
 

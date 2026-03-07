@@ -1,4 +1,4 @@
-import { Grid, GameMode, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
+import { Grid, GameMode } from './types';
 import { dictionary } from './Dictionary';
 
 
@@ -48,9 +48,7 @@ export function validateHardMatchTiles(grid: Grid, row: number): boolean {
     const currentCell = grid.cells[row][col];
     
     if (currentCell.accessible && currentCell.ruleTile?.type === 'hardMatch') {
-      const ruleTile = currentCell.ruleTile as HardMatchTile;
-      const pairedRow = ruleTile.constraint.pairedRow;
-      const pairedCol = ruleTile.constraint.pairedCol;
+      const { pairedRow, pairedCol } = currentCell.ruleTile.constraint;
 
       if (!isRowComplete(grid, pairedRow)) continue;
 
@@ -70,8 +68,7 @@ export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
       const sourceCell = grid.cells[sourceRow][col];
       
       if (sourceCell.accessible && sourceCell.ruleTile?.type === 'softMatch') {
-        const ruleTile = sourceCell.ruleTile as SoftMatchTile;
-        const targetRow = ruleTile.constraint.nextRow;
+        const targetRow = sourceCell.ruleTile.constraint.nextRow;
         
         if (targetRow === row) {
           if (!isRowComplete(grid, sourceRow)) continue;
@@ -108,8 +105,7 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
       const sourceCell = grid.cells[sourceRow][col];
 
       if (sourceCell.accessible && sourceCell.ruleTile?.type === 'forbiddenMatch') {
-        const ruleTile = sourceCell.ruleTile as ForbiddenMatchTile;
-        const targetRow = ruleTile.constraint.nextRow;
+        const targetRow = sourceCell.ruleTile.constraint.nextRow;
 
         if (targetRow === row) {
           if (!isRowComplete(grid, sourceRow)) continue;
@@ -208,14 +204,12 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
       if (sourceCell.accessible && sourceCell.ruleTile?.type === 'softMatch') {
-        const ruleTile = sourceCell.ruleTile as SoftMatchTile;
-        if (ruleTile.constraint.nextRow === row) {
+        if (sourceCell.ruleTile.constraint.nextRow === row) {
           hasSoftMatchTile = true;
         }
       }
       if (sourceCell.accessible && sourceCell.ruleTile?.type === 'forbiddenMatch') {
-        const ruleTile = sourceCell.ruleTile as ForbiddenMatchTile;
-        if (ruleTile.constraint.nextRow === row) {
+        if (sourceCell.ruleTile.constraint.nextRow === row) {
           hasForbiddenMatchTile = true;
         }
       }
@@ -273,7 +267,7 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
     const col = accessibleCols[i];
     const cell = grid.cells[targetRow][col];
     if (cell.ruleTile?.type === 'hardMatch') {
-      const { pairedRow, pairedCol } = (cell.ruleTile as HardMatchTile).constraint;
+      const { pairedRow, pairedCol } = cell.ruleTile.constraint;
       if (isRowComplete(grid, pairedRow)) {
         const letter = grid.cells[pairedRow][pairedCol].letter;
         if (letter) hardMatchConstraints.set(i, letter.toLowerCase());
@@ -291,13 +285,11 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
       if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
 
       if (cell.ruleTile.type === 'softMatch') {
-        const ruleTile = cell.ruleTile as SoftMatchTile;
-        if (ruleTile.constraint.nextRow === targetRow) {
+        if (cell.ruleTile.constraint.nextRow === targetRow) {
           softMatchRequired.push(cell.letter.toLowerCase());
         }
       } else if (cell.ruleTile.type === 'forbiddenMatch') {
-        const ruleTile = cell.ruleTile as ForbiddenMatchTile;
-        if (ruleTile.constraint.nextRow === targetRow) {
+        if (cell.ruleTile.constraint.nextRow === targetRow) {
           forbiddenLetters.add(cell.letter.toLowerCase());
         }
       }

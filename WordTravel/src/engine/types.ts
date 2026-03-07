@@ -3,12 +3,7 @@ export type GameMode = 'puzzle' | 'action';
 export type CellState = 'empty' | 'filled' | 'locked';
 export type ValidationState = 'none' | 'correct' | 'incorrect';
 
-export interface RuleTile {
-  type: string;
-  constraint: any;
-}
-
-export interface HardMatchTile extends RuleTile {
+export interface HardMatchTile {
   type: 'hardMatch';
   constraint: {
     pairedRow: number;
@@ -17,19 +12,21 @@ export interface HardMatchTile extends RuleTile {
   };
 }
 
-export interface SoftMatchTile extends RuleTile {
+export interface SoftMatchTile {
   type: 'softMatch';
   constraint: {
     nextRow: number;
   };
 }
 
-export interface ForbiddenMatchTile extends RuleTile {
+export interface ForbiddenMatchTile {
   type: 'forbiddenMatch';
   constraint: {
     nextRow: number;
   };
 }
+
+export type RuleTile = HardMatchTile | SoftMatchTile | ForbiddenMatchTile;
 
 export interface Cell {
   letter: string | null;
