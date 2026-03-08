@@ -1,8 +1,24 @@
 import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
 import { dictionary } from './Dictionary';
+import { serializeGrid } from './PuzzleNotation';
+
+const MAX_GENERATION_ATTEMPTS = 10;
 
 export class PuzzleGenerator {
+  generatePuzzle(puzzleType: PuzzleType = 'open'): string {
+    for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+      const config = this.generatePuzzleConfig(0, 0, puzzleType);
+      const grid = this.createGridFromConfig(config, puzzleType);
+      if (this.isGridValid(grid)) {
+        return serializeGrid(grid);
+      }
+    }
+    console.warn('[PuzzleGenerator] Max generation attempts reached, returning best-effort puzzle');
+    const config = this.generatePuzzleConfig(0, 0, puzzleType);
+    return serializeGrid(this.createGridFromConfig(config, puzzleType));
+  }
+
   generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1, puzzleType: PuzzleType = 'open'): PuzzleConfig {
     const wordSlots: WordSlot[] = [];
     
@@ -124,7 +140,8 @@ export class PuzzleGenerator {
       const bottomCell = grid.cells[randomRow + 1][randomCol];
       
       if (topCell.accessible && bottomCell.accessible && 
-          !topCell.ruleTile && !bottomCell.ruleTile) {
+          !topCell.ruleTile && !bottomCell.ruleTile &&
+          !topCell.fixed && !bottomCell.fixed) {
         
         const topTile: HardMatchTile = {
           type: 'hardMatch',
@@ -167,7 +184,7 @@ export class PuzzleGenerator {
       const currentCell = grid.cells[randomRow][randomCol];
       const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
       
-      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
+      if (currentCell.accessible && !currentCell.ruleTile && !currentCell.fixed && hasAccessibleNextRow) {
         const tile: SoftMatchTile = {
           type: 'softMatch',
           constraint: {
@@ -196,7 +213,7 @@ export class PuzzleGenerator {
       const currentCell = grid.cells[randomRow][randomCol];
       const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
 
-      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
+      if (currentCell.accessible && !currentCell.ruleTile && !currentCell.fixed && hasAccessibleNextRow) {
         const tile: ForbiddenMatchTile = {
           type: 'forbiddenMatch',
           constraint: {
@@ -237,12 +254,12 @@ export class PuzzleGenerator {
 
       for (let col = slot.startCol; col <= slot.endCol && deficit > 0; col++) {
         const cell = grid.cells[slot.row][col];
-        if (!cell.accessible || cell.ruleTile) continue;
+        if (!cell.accessible || cell.ruleTile || cell.fixed) continue;
 
         // Try ● pair with the row below
         if (slot.row + 1 < grid.rows) {
           const below = grid.cells[slot.row + 1][col];
-          if (below.accessible && !below.ruleTile) {
+          if (below.accessible && !below.ruleTile && !below.fixed) {
             cell.ruleTile = {
               type: 'hardMatch',
               constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
@@ -267,6 +284,43 @@ export class PuzzleGenerator {
         }
       }
     }
+  }
+
+  private isGridValid(grid: Grid): boolean {
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        const cell = grid.cells[r][c];
+        if (!cell.accessible || !cell.ruleTile) continue;
+
+        if (cell.ruleTile.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
+          const { pairedRow, pairedCol } = cell.ruleTile.constraint;
+          const paired = grid.cells[pairedRow]?.[pairedCol];
+          if (cell.fixed && paired?.fixed && cell.letter !== paired.letter) {
+            return false;
+          }
+        }
+
+        if (cell.ruleTile.type === 'softMatch' && cell.fixed && cell.letter) {
+          const targetRow = cell.ruleTile.constraint.nextRow;
+          const targetCells = grid.cells[targetRow];
+          if (!targetCells) continue;
+          const allFixed = targetCells.every(tc => !tc.accessible || tc.fixed);
+          if (allFixed) {
+            const hasMatch = targetCells.some(tc => tc.accessible && tc.letter === cell.letter);
+            if (!hasMatch) return false;
+          }
+        }
+
+        if (cell.ruleTile.type === 'forbiddenMatch' && cell.fixed && cell.letter) {
+          const targetRow = cell.ruleTile.constraint.nextRow;
+          const targetCells = grid.cells[targetRow];
+          if (!targetCells) continue;
+          const hasConflict = targetCells.some(tc => tc.accessible && tc.fixed && tc.letter === cell.letter);
+          if (hasConflict) return false;
+        }
+      }
+    }
+    return true;
   }
 
   private prefillFixedWords(grid: Grid, config: PuzzleConfig, puzzleType: PuzzleType): void {

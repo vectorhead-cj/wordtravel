@@ -5,6 +5,7 @@ import { GameMode, GameResult, PuzzleType, Grid as GridType } from '../engine/ty
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
+import { parseGrid, addPadding } from '../engine/PuzzleNotation';
 import { colors } from '../theme';
 
 interface GameScreenProps {
@@ -26,8 +27,8 @@ export function GameScreen({
 }: GameScreenProps) {
   const [grid, setGrid] = useState<GridType>(() => {
     if (mode === 'puzzle') {
-      const config = puzzleGenerator.generatePuzzleConfig(paddingRowsTop, paddingRowsBottom, puzzleType);
-      return puzzleGenerator.createGridFromConfig(config, puzzleType);
+      const puzzleString = puzzleGenerator.generatePuzzle(puzzleType);
+      return addPadding(parseGrid(puzzleString), paddingRowsTop, paddingRowsBottom);
     }
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });
