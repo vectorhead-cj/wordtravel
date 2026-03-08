@@ -1,12 +1,22 @@
-import { Grid, Cell, PuzzleConfig, WordSlot, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
+import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
+import { dictionary } from './Dictionary';
 
 export class PuzzleGenerator {
-  generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1): PuzzleConfig {
+  generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1, puzzleType: PuzzleType = 'open'): PuzzleConfig {
     const wordSlots: WordSlot[] = [];
     
     for (let i = 0; i < PUZZLE_CONFIG.WORD_ROWS; i++) {
-      const length = this.randomWordLength();
+      const isFirstRow = i === 0;
+      const isLastRow = i === PUZZLE_CONFIG.WORD_ROWS - 1;
+
+      const fixFirst = puzzleType === 'bridge';
+      const fixLast = puzzleType === 'bridge' || puzzleType === 'semi';
+
+      const length = (isFirstRow && fixFirst) || (isLastRow && fixLast)
+        ? this.randomFixedWordLength()
+        : this.randomWordLength();
+
       const { startCol, endCol } = this.calculateWordPosition(length);
       
       wordSlots.push({
@@ -26,7 +36,7 @@ export class PuzzleGenerator {
     };
   }
   
-  createGridFromConfig(config: PuzzleConfig): Grid {
+  createGridFromConfig(config: PuzzleConfig, puzzleType: PuzzleType = 'open'): Grid {
     const cells: Cell[][] = [];
     
     for (let row = 0; row < config.rows; row++) {
@@ -52,6 +62,7 @@ export class PuzzleGenerator {
       cells,
     };
     
+    this.prefillFixedWords(grid, config, puzzleType);
     this.placeFixedLetterTiles(grid, config);
     this.placeHardMatchTiles(grid, config);
     this.placeSoftMatchTiles(grid, config);
@@ -67,7 +78,8 @@ export class PuzzleGenerator {
 
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
-        if (grid.cells[row][col].accessible) {
+        const cell = grid.cells[row][col];
+        if (cell.accessible && !cell.fixed) {
           candidates.push({ row, col });
         }
       }
@@ -255,6 +267,39 @@ export class PuzzleGenerator {
         }
       }
     }
+  }
+
+  private prefillFixedWords(grid: Grid, config: PuzzleConfig, puzzleType: PuzzleType): void {
+    if (puzzleType === 'open') return;
+
+    const firstSlot = config.wordSlots[0];
+    const lastSlot = config.wordSlots[config.wordSlots.length - 1];
+
+    if (puzzleType === 'bridge') {
+      this.fillSlotWithRandomWord(grid, firstSlot);
+    }
+
+    if (puzzleType === 'bridge' || puzzleType === 'semi') {
+      this.fillSlotWithRandomWord(grid, lastSlot);
+    }
+  }
+
+  private fillSlotWithRandomWord(grid: Grid, slot: WordSlot): void {
+    const word = dictionary.getRandomWord(slot.length);
+    if (!word) return;
+
+    for (let i = 0; i < slot.length; i++) {
+      const col = slot.startCol + i;
+      const cell = grid.cells[slot.row][col];
+      cell.letter = word[i].toUpperCase();
+      cell.state = 'locked';
+      cell.fixed = true;
+      cell.validation = 'correct';
+    }
+  }
+
+  private randomFixedWordLength(): number {
+    return Math.random() < 0.5 ? 3 : 4;
   }
 
   private randomWordLength(): number {

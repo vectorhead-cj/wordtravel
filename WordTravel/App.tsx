@@ -7,7 +7,7 @@ import {
 import { StartScreen } from './src/screens/StartScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
-import { GameMode, GameResult } from './src/engine/types';
+import { GameMode, GameResult, PuzzleType } from './src/engine/types';
 import { colors } from './src/theme';
 
 type Screen = 'start' | 'game' | 'result';
@@ -27,10 +27,12 @@ function AppContent() {
   const safeAreaInsets = useSafeAreaInsets();
   const [currentScreen, setCurrentScreen] = useState<Screen>('start');
   const [gameMode, setGameMode] = useState<GameMode>('puzzle');
+  const [puzzleType, setPuzzleType] = useState<PuzzleType>('open');
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
-  const handleSelectMode = (mode: GameMode) => {
+  const handleSelectMode = (mode: GameMode, selectedPuzzleType?: PuzzleType) => {
     setGameMode(mode);
+    setPuzzleType(selectedPuzzleType ?? 'open');
     setCurrentScreen('game');
   };
 
@@ -56,6 +58,7 @@ function AppContent() {
         return (
           <GameScreen
             mode={gameMode}
+            puzzleType={puzzleType}
             onGameComplete={handleGameComplete}
             onBack={handleBackFromGame}
           />

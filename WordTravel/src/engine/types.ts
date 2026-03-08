@@ -1,4 +1,5 @@
 export type GameMode = 'puzzle' | 'action';
+export type PuzzleType = 'open' | 'bridge' | 'semi';
 
 export type CellState = 'empty' | 'filled' | 'locked';
 export type ValidationState = 'none' | 'correct' | 'incorrect';

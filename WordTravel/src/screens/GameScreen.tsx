@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GameMode, GameResult, Grid as GridType } from '../engine/types';
+import { GameMode, GameResult, PuzzleType, Grid as GridType } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
@@ -9,6 +9,7 @@ import { colors } from '../theme';
 
 interface GameScreenProps {
   mode: GameMode;
+  puzzleType?: PuzzleType;
   onGameComplete: (result: GameResult) => void;
   onBack: () => void;
   paddingRowsTop?: number;
@@ -17,6 +18,7 @@ interface GameScreenProps {
 
 export function GameScreen({ 
   mode, 
+  puzzleType = 'open',
   onGameComplete, 
   onBack,
   paddingRowsTop = 3,
@@ -24,8 +26,8 @@ export function GameScreen({
 }: GameScreenProps) {
   const [grid, setGrid] = useState<GridType>(() => {
     if (mode === 'puzzle') {
-      const config = puzzleGenerator.generatePuzzleConfig(paddingRowsTop, paddingRowsBottom);
-      return puzzleGenerator.createGridFromConfig(config);
+      const config = puzzleGenerator.generatePuzzleConfig(paddingRowsTop, paddingRowsBottom, puzzleType);
+      return puzzleGenerator.createGridFromConfig(config, puzzleType);
     }
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });
@@ -67,7 +69,7 @@ export function GameScreen({
           <View style={styles.centerSection}>
             <View style={styles.modePill}>
               <Text style={styles.modeText} numberOfLines={1}>
-                {mode === 'puzzle' ? 'Puzzle Mode' : 'Action Mode'}
+                {mode === 'action' ? 'Action Mode' : `Puzzle - ${puzzleType.charAt(0).toUpperCase() + puzzleType.slice(1)}`}
               </Text>
             </View>
           </View>
