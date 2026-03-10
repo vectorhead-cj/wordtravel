@@ -125,6 +125,7 @@ export function useGridInput({ grid, mode, onGridChange, onRowValidated }: UseGr
   return {
     currentPosition,
     errorMessage,
+    validationFailed: validationFailedRow !== null,
     handleKeyPress,
     handleBackspace,
   };

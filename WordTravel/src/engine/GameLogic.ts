@@ -49,10 +49,10 @@ export function validateHardMatchTiles(grid: Grid, row: number): boolean {
     
     if (currentCell.accessible && currentCell.ruleTile?.type === 'hardMatch') {
       const { pairedRow, pairedCol } = currentCell.ruleTile.constraint;
-
-      if (!isRowComplete(grid, pairedRow)) continue;
-
       const pairedCell = grid.cells[pairedRow][pairedCol];
+
+      if (!pairedCell.letter) continue;
+
       if (currentCell.letter !== pairedCell.letter) {
         return false;
       }
@@ -128,30 +128,32 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
 }
 
 export function validateNoHardMatchForbiddenConflict(grid: Grid, row: number): boolean {
-  // Collect letters forced INTO a target row by hardMatch-top tiles
-  const forcedByHardMatch = new Map<number, Set<string>>();
-  // Collect letters BANNED FROM a target row by forbiddenMatch tiles
-  const bannedByForbidden = new Map<number, Set<string>>();
+  const requiredInRow = new Map<number, Set<string>>();
+  const bannedFromRow = new Map<number, Set<string>>();
 
   for (let col = 0; col < grid.cols; col++) {
     const cell = grid.cells[row][col];
     if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
 
     if (cell.ruleTile.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
-      const targetRow = cell.ruleTile.constraint.pairedRow;
-      if (!forcedByHardMatch.has(targetRow)) forcedByHardMatch.set(targetRow, new Set());
-      forcedByHardMatch.get(targetRow)!.add(cell.letter);
+      const target = cell.ruleTile.constraint.pairedRow;
+      if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
+      requiredInRow.get(target)!.add(cell.letter);
+    } else if (cell.ruleTile.type === 'softMatch') {
+      const target = cell.ruleTile.constraint.nextRow;
+      if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
+      requiredInRow.get(target)!.add(cell.letter);
     } else if (cell.ruleTile.type === 'forbiddenMatch') {
-      const targetRow = cell.ruleTile.constraint.nextRow;
-      if (!bannedByForbidden.has(targetRow)) bannedByForbidden.set(targetRow, new Set());
-      bannedByForbidden.get(targetRow)!.add(cell.letter);
+      const target = cell.ruleTile.constraint.nextRow;
+      if (!bannedFromRow.has(target)) bannedFromRow.set(target, new Set());
+      bannedFromRow.get(target)!.add(cell.letter);
     }
   }
 
-  for (const [targetRow, forced] of forcedByHardMatch) {
-    const banned = bannedByForbidden.get(targetRow);
+  for (const [targetRow, required] of requiredInRow) {
+    const banned = bannedFromRow.get(targetRow);
     if (!banned) continue;
-    for (const letter of forced) {
+    for (const letter of required) {
       if (banned.has(letter)) return false;
     }
   }
@@ -284,9 +286,9 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
 
     if (cell.ruleTile?.type === 'hardMatch') {
       const { pairedRow, pairedCol } = cell.ruleTile.constraint;
-      if (isRowComplete(grid, pairedRow)) {
-        const letter = grid.cells[pairedRow][pairedCol].letter;
-        if (letter) hardMatchConstraints.set(i, letter.toLowerCase());
+      const pairedCell = grid.cells[pairedRow]?.[pairedCol];
+      if (pairedCell?.letter) {
+        hardMatchConstraints.set(i, pairedCell.letter.toLowerCase());
       }
     }
   }

@@ -110,42 +110,33 @@ describe('PuzzleGenerator', () => {
   });
 
   describe('conflict guards', () => {
-    it('should never place hard match on fixed cells', () => {
-      for (let i = 0; i < ITERATIONS; i++) {
+    it('should allow rule tiles on fixed cells in bridge mode', () => {
+      let foundRuleOnFixed = false;
+      for (let i = 0; i < ITERATIONS && !foundRuleOnFixed; i++) {
         const grid = generateAndParse('bridge');
         for (let r = 0; r < grid.rows; r++) {
           for (let c = 0; c < grid.cols; c++) {
             const cell = grid.cells[r][c];
-            if (cell.fixed && cell.ruleTile?.type === 'hardMatch') {
-              fail(`Fixed cell at (${r},${c}) has hardMatch tile`);
+            if (cell.fixed && cell.ruleTile) {
+              foundRuleOnFixed = true;
             }
           }
         }
       }
+      expect(foundRuleOnFixed).toBe(true);
     });
 
-    it('should never place soft match on fixed cells', () => {
+    it('should never have hard match between two fixed cells with different letters', () => {
       for (let i = 0; i < ITERATIONS; i++) {
         const grid = generateAndParse('bridge');
         for (let r = 0; r < grid.rows; r++) {
           for (let c = 0; c < grid.cols; c++) {
             const cell = grid.cells[r][c];
-            if (cell.fixed && cell.ruleTile?.type === 'softMatch') {
-              fail(`Fixed cell at (${r},${c}) has softMatch tile`);
-            }
-          }
-        }
-      }
-    });
-
-    it('should never place forbidden match on fixed cells', () => {
-      for (let i = 0; i < ITERATIONS; i++) {
-        const grid = generateAndParse('bridge');
-        for (let r = 0; r < grid.rows; r++) {
-          for (let c = 0; c < grid.cols; c++) {
-            const cell = grid.cells[r][c];
-            if (cell.fixed && cell.ruleTile?.type === 'forbiddenMatch') {
-              fail(`Fixed cell at (${r},${c}) has forbiddenMatch tile`);
+            if (cell.ruleTile?.type !== 'hardMatch' || cell.ruleTile.constraint.position !== 'top') continue;
+            const { pairedRow, pairedCol } = cell.ruleTile.constraint;
+            const paired = grid.cells[pairedRow]?.[pairedCol];
+            if (cell.fixed && paired?.fixed) {
+              expect(cell.letter).toBe(paired.letter);
             }
           }
         }

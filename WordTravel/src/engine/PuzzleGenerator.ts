@@ -3,20 +3,21 @@ import { PUZZLE_CONFIG } from './config';
 import { dictionary } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
 
-const MAX_GENERATION_ATTEMPTS = 10;
+const MAX_GENERATION_ATTEMPTS = 50;
 
 export class PuzzleGenerator {
   generatePuzzle(puzzleType: PuzzleType = 'open'): string {
+    let lastGrid: Grid | null = null;
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
       const config = this.generatePuzzleConfig(0, 0, puzzleType);
       const grid = this.createGridFromConfig(config, puzzleType);
+      lastGrid = grid;
       if (this.isGridValid(grid)) {
         return serializeGrid(grid);
       }
     }
     console.warn('[PuzzleGenerator] Max generation attempts reached, returning best-effort puzzle');
-    const config = this.generatePuzzleConfig(0, 0, puzzleType);
-    return serializeGrid(this.createGridFromConfig(config, puzzleType));
+    return serializeGrid(lastGrid!);
   }
 
   generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1, puzzleType: PuzzleType = 'open'): PuzzleConfig {
@@ -141,7 +142,7 @@ export class PuzzleGenerator {
       
       if (topCell.accessible && bottomCell.accessible && 
           !topCell.ruleTile && !bottomCell.ruleTile &&
-          !topCell.fixed && !bottomCell.fixed) {
+          !(topCell.fixed && bottomCell.fixed && topCell.letter !== bottomCell.letter)) {
         
         const topTile: HardMatchTile = {
           type: 'hardMatch',
@@ -184,7 +185,7 @@ export class PuzzleGenerator {
       const currentCell = grid.cells[randomRow][randomCol];
       const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
       
-      if (currentCell.accessible && !currentCell.ruleTile && !currentCell.fixed && hasAccessibleNextRow) {
+      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
         const tile: SoftMatchTile = {
           type: 'softMatch',
           constraint: {
@@ -213,7 +214,7 @@ export class PuzzleGenerator {
       const currentCell = grid.cells[randomRow][randomCol];
       const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
 
-      if (currentCell.accessible && !currentCell.ruleTile && !currentCell.fixed && hasAccessibleNextRow) {
+      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
         const tile: ForbiddenMatchTile = {
           type: 'forbiddenMatch',
           constraint: {
@@ -254,12 +255,13 @@ export class PuzzleGenerator {
 
       for (let col = slot.startCol; col <= slot.endCol && deficit > 0; col++) {
         const cell = grid.cells[slot.row][col];
-        if (!cell.accessible || cell.ruleTile || cell.fixed) continue;
+        if (!cell.accessible || cell.ruleTile) continue;
 
         // Try ● pair with the row below
         if (slot.row + 1 < grid.rows) {
           const below = grid.cells[slot.row + 1][col];
-          if (below.accessible && !below.ruleTile && !below.fixed) {
+          if (below.accessible && !below.ruleTile &&
+              !(cell.fixed && below.fixed && cell.letter !== below.letter)) {
             cell.ruleTile = {
               type: 'hardMatch',
               constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
@@ -319,7 +321,122 @@ export class PuzzleGenerator {
           if (hasConflict) return false;
         }
       }
+
+      // Cross-rule check: hard/soft match requiring a letter vs forbidden banning it
+      const requiredInRow = new Map<number, Set<string>>();
+      const bannedFromRow = new Map<number, Set<string>>();
+
+      for (let c = 0; c < grid.cols; c++) {
+        const cell = grid.cells[r][c];
+        if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
+
+        if (cell.ruleTile.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
+          const target = cell.ruleTile.constraint.pairedRow;
+          if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
+          requiredInRow.get(target)!.add(cell.letter);
+        } else if (cell.ruleTile.type === 'softMatch') {
+          const target = cell.ruleTile.constraint.nextRow;
+          if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
+          requiredInRow.get(target)!.add(cell.letter);
+        } else if (cell.ruleTile.type === 'forbiddenMatch') {
+          const target = cell.ruleTile.constraint.nextRow;
+          if (!bannedFromRow.has(target)) bannedFromRow.set(target, new Set());
+          bannedFromRow.get(target)!.add(cell.letter);
+        }
+      }
+
+      for (const [targetRow, required] of requiredInRow) {
+        const banned = bannedFromRow.get(targetRow);
+        if (!banned) continue;
+        for (const letter of required) {
+          if (banned.has(letter)) return false;
+        }
+      }
     }
+
+    // Dictionary feasibility: for each non-fixed row, check that at least one
+    // word exists that satisfies all constraints from completed (fixed) rows.
+    for (let r = 0; r < grid.rows; r++) {
+      const accessibleCols: number[] = [];
+      for (let c = 0; c < grid.cols; c++) {
+        if (grid.cells[r][c].accessible) accessibleCols.push(c);
+      }
+      if (accessibleCols.length === 0) continue;
+
+      const allFixed = accessibleCols.every(c => grid.cells[r][c].fixed);
+      if (allFixed) continue;
+
+      const positionConstraints = new Map<number, string>();
+      const mustContain: string[] = [];
+      const mustNotContain = new Set<string>();
+
+      for (let i = 0; i < accessibleCols.length; i++) {
+        const col = accessibleCols[i];
+        const cell = grid.cells[r][col];
+
+        if (cell.fixed && cell.letter) {
+          positionConstraints.set(i, cell.letter.toLowerCase());
+          continue;
+        }
+
+        if (cell.ruleTile?.type === 'hardMatch') {
+          const { pairedRow, pairedCol } = cell.ruleTile.constraint;
+          const paired = grid.cells[pairedRow]?.[pairedCol];
+          if (paired?.fixed && paired.letter) {
+            positionConstraints.set(i, paired.letter.toLowerCase());
+          }
+        }
+      }
+
+      for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+        const sourceAllFixed = grid.cells[sourceRow]
+          .filter(c => c.accessible)
+          .every(c => c.fixed);
+        if (!sourceAllFixed) continue;
+
+        for (let c = 0; c < grid.cols; c++) {
+          const cell = grid.cells[sourceRow][c];
+          if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
+
+          if (cell.ruleTile.type === 'softMatch' && cell.ruleTile.constraint.nextRow === r) {
+            mustContain.push(cell.letter.toLowerCase());
+          } else if (cell.ruleTile.type === 'forbiddenMatch' && cell.ruleTile.constraint.nextRow === r) {
+            mustNotContain.add(cell.letter.toLowerCase());
+          }
+        }
+      }
+
+      if (positionConstraints.size === 0 && mustContain.length === 0 && mustNotContain.size === 0) {
+        continue;
+      }
+
+      const wordLength = accessibleCols.length;
+      let candidates = dictionary.getWordsOfLength(wordLength);
+
+      // Position constraints are the cheapest filter — apply first
+      for (const [idx, letter] of positionConstraints) {
+        candidates = candidates.filter(w => w[idx] === letter);
+        if (candidates.length === 0) return false;
+      }
+
+      if (mustNotContain.size > 0) {
+        candidates = candidates.filter(w => {
+          for (const letter of mustNotContain) {
+            if (w.includes(letter)) return false;
+          }
+          return true;
+        });
+        if (candidates.length === 0) return false;
+      }
+
+      if (mustContain.length > 0) {
+        const hasFeasible = candidates.some(w =>
+          mustContain.every(letter => w.includes(letter))
+        );
+        if (!hasFeasible) return false;
+      }
+    }
+
     return true;
   }
 

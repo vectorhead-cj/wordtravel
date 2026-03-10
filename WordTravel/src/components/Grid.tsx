@@ -26,7 +26,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
 
-  const { currentPosition, errorMessage, handleKeyPress, handleBackspace } = useGridInput({
+  const { currentPosition, errorMessage, validationFailed, handleKeyPress, handleBackspace } = useGridInput({
     grid,
     mode,
     onGridChange,
@@ -52,7 +52,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
   }, []);
 
   useEffect(() => {
-    if (!currentPosition) return;
+    if (!currentPosition || validationFailed) return;
     const screenHeight = Dimensions.get('window').height;
     const rowYPosition = currentPosition.row * cellSize;
     const screenMiddle = screenHeight * 0.5;
@@ -61,7 +61,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
       const targetY = rowYPosition - screenHeight * 0.45;
       scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
     }
-  }, [currentPosition, cellSize]);
+  }, [currentPosition, cellSize, validationFailed]);
 
   const badgeColumns = useMemo(() => {
     return grid.cells.map(row => {
