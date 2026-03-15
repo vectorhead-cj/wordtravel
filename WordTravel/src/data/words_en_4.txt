@@ -1,4 +1,4 @@
-export default `aahs
+aahs
 aals
 abas
 abba
@@ -3901,4 +3901,3 @@ zoon
 zoos
 zori
 zyme
-`;

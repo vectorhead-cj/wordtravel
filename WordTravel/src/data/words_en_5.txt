@@ -1,4 +1,4 @@
-export default `aahed
+aahed
 aalii
 aargh
 abaca
@@ -8634,4 +8634,3 @@ zoril
 zoris
 zowie
 zymes
-`;

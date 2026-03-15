@@ -1,14 +1,26 @@
-import words3Raw from '../data/words_en_3';
-import words4Raw from '../data/words_en_4';
-import words5Raw from '../data/words_en_5';
-import words6Raw from '../data/words_en_6';
+import words3Raw from '../data/words_en_3.txt';
+import words4Raw from '../data/words_en_4.txt';
+import words5Raw from '../data/words_en_5.txt';
+import words6Raw from '../data/words_en_6.txt';
+
+export interface ConstraintQuery {
+  positionConstraints?: Map<number, string>;
+  mustContain?: string[];
+  mustNotContain?: Set<string>;
+  excludeWords?: Set<string>;
+}
 
 class Dictionary {
-  private wordsByLength: Map<number, Set<string>>;
+  private wordSets: Map<number, Set<string>>;
+  private wordArrays: Map<number, string[]>;
+  // Key: "length:position:letter" → words matching that constraint
+  private positionIndex: Map<string, string[]>;
   private isInitialized: boolean = false;
 
   constructor() {
-    this.wordsByLength = new Map();
+    this.wordSets = new Map();
+    this.wordArrays = new Map();
+    this.positionIndex = new Map();
   }
 
   initialize(): void {
@@ -22,55 +34,110 @@ class Dictionary {
     this.isInitialized = true;
   }
 
-  private loadWords(length: number, wordList: string): void {
-    const words = wordList
+  private loadWords(length: number, raw: string): void {
+    const words = raw
       .trim()
       .split('\n')
       .map(w => w.trim().toLowerCase())
-      .filter(w => w.length > 0 && w.length === length);
+      .filter(w => w.length === length);
 
-    this.wordsByLength.set(length, new Set(words));
+    this.wordSets.set(length, new Set(words));
+    this.wordArrays.set(length, words);
+
+    for (const word of words) {
+      for (let pos = 0; pos < word.length; pos++) {
+        const key = `${length}:${pos}:${word[pos]}`;
+        let bucket = this.positionIndex.get(key);
+        if (!bucket) {
+          bucket = [];
+          this.positionIndex.set(key, bucket);
+        }
+        bucket.push(word);
+      }
+    }
   }
 
   isValidWord(word: string): boolean {
-    const normalizedWord = word.toLowerCase();
-    const length = normalizedWord.length;
-
-    const wordSet = this.wordsByLength.get(length);
-    return wordSet?.has(normalizedWord) ?? false;
+    const normalized = word.toLowerCase();
+    return this.wordSets.get(normalized.length)?.has(normalized) ?? false;
   }
 
   getRandomWord(length: number): string | null {
-    const wordSet = this.wordsByLength.get(length);
-    if (!wordSet || wordSet.size === 0) return null;
-
-    const words = Array.from(wordSet);
+    const words = this.wordArrays.get(length);
+    if (!words || words.length === 0) return null;
     return words[Math.floor(Math.random() * words.length)];
   }
 
   getWordCount(length?: number): number {
     if (length !== undefined) {
-      return this.wordsByLength.get(length)?.size ?? 0;
+      return this.wordSets.get(length)?.size ?? 0;
     }
-
     let total = 0;
-    for (const wordSet of this.wordsByLength.values()) {
+    for (const wordSet of this.wordSets.values()) {
       total += wordSet.size;
     }
     return total;
   }
 
   getWordsOfLength(length: number): string[] {
-    const wordSet = this.wordsByLength.get(length);
-    if (!wordSet) return [];
-    return Array.from(wordSet);
+    return this.wordArrays.get(length) ?? [];
   }
 
   getAvailableLengths(): number[] {
-    return Array.from(this.wordsByLength.keys()).sort((a, b) => a - b);
+    return Array.from(this.wordSets.keys()).sort((a, b) => a - b);
+  }
+
+  /**
+   * Returns words matching all supplied constraints using the position index
+   * for fast filtering. Falls back to linear scan for mustContain/mustNotContain
+   * since those aren't position-specific.
+   */
+  getWordsMatchingConstraints(length: number, query: ConstraintQuery): string[] {
+    const { positionConstraints, mustContain, mustNotContain, excludeWords } = query;
+
+    let candidates: string[] | null = null;
+
+    // Use position index to narrow candidates via intersection
+    if (positionConstraints && positionConstraints.size > 0) {
+      for (const [pos, letter] of positionConstraints) {
+        const bucket = this.positionIndex.get(`${length}:${pos}:${letter}`) ?? [];
+        if (candidates === null) {
+          candidates = [...bucket];
+        } else {
+          const bucketSet = new Set(bucket);
+          candidates = candidates.filter(w => bucketSet.has(w));
+        }
+        if (candidates.length === 0) return [];
+      }
+    }
+
+    // Start from full word list if no position constraints narrowed it
+    if (candidates === null) {
+      candidates = [...(this.wordArrays.get(length) ?? [])];
+    }
+
+    if (excludeWords && excludeWords.size > 0) {
+      candidates = candidates.filter(w => !excludeWords.has(w));
+    }
+
+    if (mustNotContain && mustNotContain.size > 0) {
+      candidates = candidates.filter(w => {
+        for (const letter of mustNotContain) {
+          if (w.includes(letter)) return false;
+        }
+        return true;
+      });
+    }
+
+    if (mustContain && mustContain.length > 0) {
+      candidates = candidates.filter(w =>
+        mustContain.every(letter => w.includes(letter)),
+      );
+    }
+
+    return candidates;
   }
 }
 
 export const dictionary = new Dictionary();
 dictionary.initialize();
-

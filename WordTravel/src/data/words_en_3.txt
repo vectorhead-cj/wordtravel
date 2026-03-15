@@ -1,4 +1,4 @@
-export default `aah
+aah
 aal
 aas
 aba
@@ -970,4 +970,3 @@ zip
 zit
 zoa
 zoo
-`;

@@ -1,6 +1,6 @@
 import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
-import { dictionary } from './Dictionary';
+import { dictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
 
 const MAX_GENERATION_ATTEMPTS = 50;
@@ -411,30 +411,13 @@ export class PuzzleGenerator {
       }
 
       const wordLength = accessibleCols.length;
-      let candidates = dictionary.getWordsOfLength(wordLength);
-
-      // Position constraints are the cheapest filter — apply first
-      for (const [idx, letter] of positionConstraints) {
-        candidates = candidates.filter(w => w[idx] === letter);
-        if (candidates.length === 0) return false;
-      }
-
-      if (mustNotContain.size > 0) {
-        candidates = candidates.filter(w => {
-          for (const letter of mustNotContain) {
-            if (w.includes(letter)) return false;
-          }
-          return true;
-        });
-        if (candidates.length === 0) return false;
-      }
-
-      if (mustContain.length > 0) {
-        const hasFeasible = candidates.some(w =>
-          mustContain.every(letter => w.includes(letter))
-        );
-        if (!hasFeasible) return false;
-      }
+      const query: ConstraintQuery = {
+        positionConstraints: positionConstraints.size > 0 ? positionConstraints : undefined,
+        mustContain: mustContain.length > 0 ? mustContain : undefined,
+        mustNotContain: mustNotContain.size > 0 ? mustNotContain : undefined,
+      };
+      const candidates = dictionary.getWordsMatchingConstraints(wordLength, query);
+      if (candidates.length === 0) return false;
     }
 
     return true;

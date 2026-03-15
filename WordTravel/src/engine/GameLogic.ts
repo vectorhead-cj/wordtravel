@@ -332,18 +332,11 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
     }
   }
 
-  const count = dictionary.getWordsOfLength(wordLength).filter(word => {
-    if (usedWords.has(word)) return false;
-    for (const [idx, letter] of hardMatchConstraints) {
-      if (word[idx] !== letter) return false;
-    }
-    for (const letter of forbiddenLetters) {
-      if (word.includes(letter)) return false;
-    }
-    for (const letter of softMatchRequired) {
-      if (!word.includes(letter)) return false;
-    }
-    return true;
+  const count = dictionary.getWordsMatchingConstraints(wordLength, {
+    positionConstraints: hardMatchConstraints.size > 0 ? hardMatchConstraints : undefined,
+    mustContain: softMatchRequired.length > 0 ? softMatchRequired : undefined,
+    mustNotContain: forbiddenLetters.size > 0 ? forbiddenLetters : undefined,
+    excludeWords: usedWords.size > 0 ? usedWords : undefined,
   }).length;
 
   console.log(

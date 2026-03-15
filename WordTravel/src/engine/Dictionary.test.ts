@@ -109,5 +109,81 @@ describe('Dictionary', () => {
       expect(words.size).toBeGreaterThan(1);
     });
   });
-});
 
+  describe('getWordsMatchingConstraints', () => {
+    it('should filter by position constraints', () => {
+      const results = dictionary.getWordsMatchingConstraints(3, {
+        positionConstraints: new Map([[0, 'c'], [1, 'a'], [2, 't']]),
+      });
+      expect(results).toEqual(['cat']);
+    });
+
+    it('should filter by single position constraint', () => {
+      const results = dictionary.getWordsMatchingConstraints(3, {
+        positionConstraints: new Map([[0, 'c']]),
+      });
+      expect(results.length).toBeGreaterThan(1);
+      expect(results.every(w => w[0] === 'c')).toBe(true);
+    });
+
+    it('should intersect multiple position constraints', () => {
+      const results = dictionary.getWordsMatchingConstraints(4, {
+        positionConstraints: new Map([[0, 'w'], [3, 'd']]),
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every(w => w[0] === 'w' && w[3] === 'd')).toBe(true);
+      expect(results).toContain('word');
+    });
+
+    it('should filter by mustContain', () => {
+      const results = dictionary.getWordsMatchingConstraints(3, {
+        mustContain: ['x'],
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every(w => w.includes('x'))).toBe(true);
+    });
+
+    it('should filter by mustNotContain', () => {
+      const results = dictionary.getWordsMatchingConstraints(3, {
+        mustNotContain: new Set(['a', 'e', 'i', 'o', 'u']),
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every(w => !/[aeiou]/.test(w))).toBe(true);
+    });
+
+    it('should exclude specific words', () => {
+      const all = dictionary.getWordsMatchingConstraints(3, {
+        positionConstraints: new Map([[0, 'c'], [1, 'a'], [2, 't']]),
+      });
+      expect(all).toEqual(['cat']);
+
+      const excluded = dictionary.getWordsMatchingConstraints(3, {
+        positionConstraints: new Map([[0, 'c'], [1, 'a'], [2, 't']]),
+        excludeWords: new Set(['cat']),
+      });
+      expect(excluded).toEqual([]);
+    });
+
+    it('should combine position, mustContain, and mustNotContain', () => {
+      const results = dictionary.getWordsMatchingConstraints(4, {
+        positionConstraints: new Map([[0, 'w']]),
+        mustContain: ['r'],
+        mustNotContain: new Set(['z']),
+      });
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every(w => w[0] === 'w' && w.includes('r') && !w.includes('z'))).toBe(true);
+    });
+
+    it('should return empty for impossible constraints', () => {
+      const results = dictionary.getWordsMatchingConstraints(3, {
+        positionConstraints: new Map([[0, 'z'], [1, 'z'], [2, 'z']]),
+      });
+      expect(results).toEqual([]);
+    });
+
+    it('should return all words when no constraints given', () => {
+      const results = dictionary.getWordsMatchingConstraints(3, {});
+      expect(results.length).toBe(dictionary.getWordCount(3));
+    });
+  });
+});

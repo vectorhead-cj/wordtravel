@@ -1,4 +1,4 @@
-export default `aahing
+aahing
 aaliis
 aarrgh
 abacas
@@ -15230,4 +15230,3 @@ zygoma
 zygose
 zygote
 zymase
-`;

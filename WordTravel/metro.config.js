@@ -10,7 +10,11 @@ const defaultConfig = getDefaultConfig(__dirname);
 
 const config = {
   resolver: {
-    assetExts: [...defaultConfig.resolver.assetExts, 'txt'],
+    sourceExts: [...defaultConfig.resolver.sourceExts, 'txt'],
+    assetExts: defaultConfig.resolver.assetExts.filter(ext => ext !== 'txt'),
+  },
+  transformer: {
+    babelTransformerPath: require.resolve('./metro-txt-transformer.js'),
   },
 };
 
