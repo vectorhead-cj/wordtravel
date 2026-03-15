@@ -8,14 +8,24 @@ interface CellViewProps {
   cellSize: number;
   tileSize: number;
   badgeCount: number | null;
+  badgeExamples?: string[];
 }
 
-export function CellView({ cell, cellSize, tileSize, badgeCount }: CellViewProps) {
+export function CellView({ cell, cellSize, tileSize, badgeCount, badgeExamples }: CellViewProps) {
   if (!cell.accessible) {
     if (badgeCount !== null) {
       return (
-        <View style={{ width: cellSize, height: cellSize, justifyContent: 'center', alignItems: 'flex-start', paddingLeft: 4 }}>
+        <View style={[styles.badgeContainer, { width: cellSize, height: cellSize }]}>
           <Text style={styles.wordCountBadge}>{badgeCount}</Text>
+          {badgeExamples && badgeExamples.length > 0 && (
+            <View style={styles.wordExamplesContainer}>
+              {badgeExamples.map((word, i) => (
+                <Text key={i} style={styles.wordExamplesBadge} numberOfLines={1}>
+                  {word}
+                </Text>
+              ))}
+            </View>
+          )}
         </View>
       );
     }
@@ -50,10 +60,23 @@ export function CellView({ cell, cellSize, tileSize, badgeCount }: CellViewProps
 }
 
 const styles = StyleSheet.create({
+  badgeContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 4,
+  },
   wordCountBadge: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.ruleIndicatorNeutral,
+  },
+  wordExamplesContainer: {
+    marginTop: 2,
+  },
+  wordExamplesBadge: {
+    fontSize: 9,
+    color: colors.textMuted,
+    maxWidth: '100%',
   },
   cellOuter: {
     justifyContent: 'center',

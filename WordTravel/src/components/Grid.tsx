@@ -7,8 +7,8 @@ import {
   Dimensions,
   Pressable,
 } from 'react-native';
-import { Grid as GridType, GameMode } from '../engine/types';
-import { countValidNextWords } from '../engine/HintEngine';
+import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
+import { countValidNextWords, getValidNextWords } from '../engine/HintEngine';
 import { colors, layout } from '../theme';
 import { CellView } from './CellView';
 import { ErrorToast } from './ErrorToast';
@@ -19,10 +19,10 @@ interface GridProps {
   mode: GameMode;
   onGridChange: (grid: GridType) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
-  showRuleHelpers: boolean;
+  hintLevel: HintLevel;
 }
 
-export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers: _showRuleHelpers }: GridProps) {
+export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel }: GridProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
 
@@ -33,12 +33,24 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
     onRowValidated,
   });
 
-  const validNextWordCounts = useMemo(() => {
+  const hintDataPerRow = useMemo(() => {
+    if (hintLevel === 'off') {
+      return grid.cells.map(() => ({ count: null as number | null, examples: undefined as string[] | undefined }));
+    }
+    if (hintLevel === 'count') {
+      return grid.cells.map((_, rowIndex) => {
+        const count = countValidNextWords(grid, rowIndex);
+        return { count: count > 0 ? count : null, examples: undefined as string[] | undefined };
+      });
+    }
     return grid.cells.map((_, rowIndex) => {
-      const count = countValidNextWords(grid, rowIndex);
-      return count > 0 ? count : null;
+      const { count, examples } = getValidNextWords(grid, rowIndex, 3);
+      return {
+        count: count > 0 ? count : null,
+        examples: count > 0 ? examples : undefined,
+      };
     });
-  }, [grid]);
+  }, [grid, hintLevel]);
 
   const { cellSize, tileSize } = useMemo(() => {
     const screenWidth = Dimensions.get('window').width;
@@ -87,7 +99,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
               <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
                 {row.map((cell, colIndex) => {
                   const showBadge = colIndex === badgeColumns[rowIndex];
-                  const badgeCount = showBadge ? validNextWordCounts[rowIndex] : null;
+                  const hintData = showBadge ? hintDataPerRow[rowIndex] : null;
 
                   return (
                     <CellView
@@ -95,7 +107,8 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, showRuleHelpers
                       cell={cell}
                       cellSize={cellSize}
                       tileSize={tileSize}
-                      badgeCount={badgeCount}
+                      badgeCount={hintData?.count ?? null}
+                      badgeExamples={hintData?.examples}
                     />
                   );
                 })}

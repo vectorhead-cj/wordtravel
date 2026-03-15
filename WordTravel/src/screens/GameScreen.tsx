@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GameMode, GameResult, PuzzleType, Grid as GridType } from '../engine/types';
+import { GameMode, GameResult, PuzzleType, Grid as GridType, HintLevel } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
@@ -32,7 +32,11 @@ export function GameScreen({
     }
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });
-  const [showRuleHelpers, setShowRuleHelpers] = useState(false);
+  const [hintLevel, setHintLevel] = useState<HintLevel>('count');
+
+  const cycleHintLevel = () => {
+    setHintLevel(prev => (prev === 'off' ? 'count' : prev === 'count' ? 'example' : 'off'));
+  };
 
   const handleGridChange = (newGrid: GridType) => {
     setGrid(newGrid);
@@ -56,7 +60,7 @@ export function GameScreen({
         mode={mode}
         onGridChange={handleGridChange}
         onRowValidated={handleRowValidated}
-        showRuleHelpers={showRuleHelpers}
+        hintLevel={hintLevel}
       />
       
       <SafeAreaView style={styles.floatingHeader} pointerEvents="box-none">
@@ -78,9 +82,11 @@ export function GameScreen({
           <View style={styles.rightSection}>
             <TouchableOpacity 
               style={styles.backButton} 
-              onPress={() => setShowRuleHelpers(!showRuleHelpers)}
+              onPress={cycleHintLevel}
             >
-              <Text style={[styles.checkmark, showRuleHelpers && styles.checkmarkActive]}>✓</Text>
+              <Text style={[styles.hintLabel, hintLevel !== 'off' && styles.hintLabelActive]}>
+                {hintLevel === 'off' ? 'OFF' : hintLevel === 'count' ? '#' : 'Ex'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -139,12 +145,12 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: '600',
   },
-  checkmark: {
-    fontSize: 24,
+  hintLabel: {
+    fontSize: 12,
     color: colors.textMuted,
     fontWeight: '600',
   },
-  checkmarkActive: {
+  hintLabelActive: {
     color: colors.accent,
   },
   modePill: {

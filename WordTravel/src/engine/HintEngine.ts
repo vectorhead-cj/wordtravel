@@ -2,19 +2,8 @@ import { Grid } from './types';
 import { generatorDictionary } from './Dictionary';
 import { isRowComplete, getWordFromRow } from './GameLogic';
 
-/**
- * Counts how many valid generator-dictionary words can be placed in targetRow
- * given the constraints imposed by already-completed rows. Only considers
- * constraints from completed rows; returns 0 if targetRow is already complete.
- *
- * Constraints evaluated:
- *   hardMatch  — specific word-index must match a letter from a completed paired row
- *   softMatch  — a letter from a completed source row must appear somewhere in the word
- *   forbiddenMatch — a letter from a completed source row must NOT appear in the word
- *   uniqueWords — word must not already be used in any other completed row
- */
-export function countValidNextWords(grid: Grid, targetRow: number): number {
-  if (isRowComplete(grid, targetRow)) return 0;
+function getMatchingWordsForRow(grid: Grid, targetRow: number): string[] {
+  if (isRowComplete(grid, targetRow)) return [];
 
   const accessibleCols: number[] = [];
   for (let col = 0; col < grid.cols; col++) {
@@ -23,7 +12,7 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
     }
   }
   const wordLength = accessibleCols.length;
-  if (wordLength === 0) return 0;
+  if (wordLength === 0) return [];
 
   const usedWords = new Set<string>();
   for (let row = 0; row < grid.rows; row++) {
@@ -76,9 +65,14 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
     softMatchRequired.length > 0 ||
     forbiddenLetters.size > 0;
 
-  if (!hasActiveConstraints) {
-    return 0;
-  }
+  if (!hasActiveConstraints) return [];
+
+  const words = generatorDictionary.getWordsMatchingConstraints(wordLength, {
+    positionConstraints: hardMatchConstraints.size > 0 ? hardMatchConstraints : undefined,
+    mustContain: softMatchRequired.length > 0 ? softMatchRequired : undefined,
+    mustNotContain: forbiddenLetters.size > 0 ? forbiddenLetters : undefined,
+    excludeWords: usedWords.size > 0 ? usedWords : undefined,
+  });
 
   let previousWord = '(unknown)';
   for (let r = targetRow - 1; r >= 0; r--) {
@@ -87,20 +81,40 @@ export function countValidNextWords(grid: Grid, targetRow: number): number {
       break;
     }
   }
-
-  const count = generatorDictionary.getWordsMatchingConstraints(wordLength, {
-    positionConstraints: hardMatchConstraints.size > 0 ? hardMatchConstraints : undefined,
-    mustContain: softMatchRequired.length > 0 ? softMatchRequired : undefined,
-    mustNotContain: forbiddenLetters.size > 0 ? forbiddenLetters : undefined,
-    excludeWords: usedWords.size > 0 ? usedWords : undefined,
-  }).length;
-
   console.log(
-    `[WordTravel] possible ${wordLength} letter words that satisfy rules after "${previousWord}": ${count}` +
+    `[WordTravel] possible ${wordLength} letter words that satisfy rules after "${previousWord}": ${words.length}` +
     ` [hard=${[...hardMatchConstraints.entries()].map(([i,l])=>`[${i}]=${l}`).join(',')}` +
     ` soft=${softMatchRequired.join(',')}` +
     ` forbidden=${[...forbiddenLetters].join(',')}]`
   );
 
-  return count;
+  return words;
+}
+
+/**
+ * Counts how many valid generator-dictionary words can be placed in targetRow
+ * given the constraints imposed by already-completed rows.
+ */
+export function countValidNextWords(grid: Grid, targetRow: number): number {
+  return getMatchingWordsForRow(grid, targetRow).length;
+}
+
+export interface ValidNextWordsResult {
+  count: number;
+  examples: string[];
+}
+
+/**
+ * Returns count and up to exampleLimit matching words for targetRow.
+ */
+export function getValidNextWords(
+  grid: Grid,
+  targetRow: number,
+  exampleLimit: number
+): ValidNextWordsResult {
+  const words = getMatchingWordsForRow(grid, targetRow);
+  return {
+    count: words.length,
+    examples: words.slice(0, exampleLimit),
+  };
 }
