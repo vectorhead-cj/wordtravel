@@ -1,972 +1,972 @@
-aah
-aal
-aas
-aba
-abo
-abs
-aby
-ace
-act
-add
-ado
-ads
-adz
-aff
-aft
-aga
-age
-ago
-aha
-aid
-ail
-aim
-ain
-air
-ais
-ait
-ala
-alb
-ale
-all
-alp
-als
-alt
-ama
-ami
-amp
-amu
-ana
-and
-ane
-ani
-ant
-any
-ape
-apt
-arb
-arc
-are
-arf
-ark
-arm
-ars
-art
-ash
-ask
-asp
-ass
-ate
-att
-auk
-ava
-ave
-avo
-awa
-awe
-awl
-awn
-axe
-aye
-ays
-azo
-baa
-bad
-bag
-bah
-bal
-bam
-ban
-bap
-bar
-bas
-bat
-bay
-bed
-bee
-beg
-bel
-ben
-bet
-bey
-bib
-bid
-big
-bin
-bio
-bis
-bit
-biz
-boa
-bob
-bod
-bog
-boo
-bop
-bos
-bot
-bow
-box
-boy
-bra
-bro
-brr
-bub
-bud
-bug
-bum
-bun
-bur
-bus
-but
-buy
-bye
-bys
-cab
-cad
-cam
-can
-cap
-car
-cat
-caw
-cay
-cee
-cel
-cep
-chi
-cis
-cob
-cod
-cog
-col
-con
-coo
-cop
-cor
-cos
-cot
-cow
-cox
-coy
-coz
-cry
-cub
-cud
-cue
-cum
-cup
-cur
-cut
-cwm
-dab
-dad
-dag
-dah
-dak
-dal
-dam
-dap
-daw
-day
-deb
-dee
-del
-den
-dev
-dew
-dex
-dey
-dib
-did
-die
-dig
-dim
-din
-dip
-dis
-dit
-doc
-doe
-dog
-dol
-dom
-don
-dor
-dos
-dot
-dow
-dry
-dub
-dud
-due
-dug
-dui
-dun
-duo
-dup
-dye
-ear
-eat
-eau
-ebb
-ecu
-edh
-eel
-eff
-efs
-eft
-egg
-ego
-eke
-eld
-elf
-elk
-ell
-elm
-els
-eme
-emf
-ems
-emu
-end
-eng
-ens
-eon
-era
-ere
-erg
-ern
-err
-ers
-ess
-eta
-eth
-eve
-ewe
-eye
-fad
-fag
-fan
-far
-fas
-fat
-fax
-fay
-fed
-fee
-feh
-fem
-fen
-fer
-fet
-feu
-few
-fey
-fez
-fib
-fid
-fie
-fig
-fil
-fin
-fir
-fit
-fix
-fiz
-flu
-fly
-fob
-foe
-fog
-foh
-fon
-fop
-for
-fou
-fox
-foy
-fro
-fry
-fub
-fud
-fug
-fun
-fur
-gab
-gad
-gae
-gag
-gal
-gam
-gan
-gap
-gar
-gas
-gat
-gay
-ged
-gee
-gel
-gem
-gen
-get
-gey
-ghi
-gib
-gid
-gie
-gig
-gin
-gip
-git
-gnu
-goa
-gob
-god
-goo
-gor
-got
-gox
-goy
-gul
-gum
-gun
-gut
-guv
-guy
-gym
-gyp
-had
-hae
-hag
-hah
-haj
-ham
-hao
-hap
-has
-hat
-haw
-hay
-heh
-hem
-hen
-hep
-her
-hes
-het
-hew
-hex
-hey
-hic
-hid
-hie
-him
-hin
-hip
-his
-hit
-hmm
-hob
-hod
-hoe
-hog
-hon
-hop
-hot
-how
-hoy
-hub
-hue
-hug
-huh
-hum
-hun
-hup
-hut
-hyp
-ice
-ich
-ick
-icy
-ids
-iff
-ifs
-ilk
-ill
-imp
-ink
-inn
-ins
-ion
-ire
-irk
-ism
-its
-ivy
-jab
-jag
-jam
-jar
-jaw
-jay
-jee
-jet
-jeu
-jew
-jib
-jig
-jin
-job
-joe
-jog
-jot
-jow
-joy
-jug
-jun
-jus
-jut
-kab
-kae
-kaf
-kas
-kat
-kay
-kea
-kef
-keg
-ken
-kep
-kex
-key
-khi
-kid
-kif
-kin
-kip
-kir
-kit
-koa
-kob
-koi
-kop
-kor
-kos
-kue
-lab
-lac
-lad
-lag
-lam
-lap
-lar
-las
-lat
-lav
-law
-lax
-lay
-lea
-led
-lee
-leg
-lei
-lek
-let
-leu
-lev
-lex
-ley
-lez
-lib
-lid
-lie
-lin
-lip
-lis
-lit
-lob
-log
-loo
-lop
-lot
-low
-lox
-lug
-lum
-luv
-lux
-lye
-mac
-mad
-mae
-mag
-man
-map
-mar
-mas
-mat
-maw
-max
-may
-med
-mel
-mem
-men
-met
-mew
-mho
-mib
-mid
-mig
-mil
-mim
-mir
-mis
-mix
-moa
-mob
-moc
-mod
-mog
-mol
-mom
-mon
-moo
-mop
-mor
-mos
-mot
-mow
-mud
-mug
-mum
-mun
-mus
-mut
-nab
-nae
-nag
-nah
-nam
-nan
-nap
-naw
-nay
-neb
-nee
-net
-new
-nib
-nil
-nim
-nip
-nit
-nix
-nob
-nod
-nog
-noh
-nom
-noo
-nor
-nos
-not
-now
-nth
-nub
-nun
-nus
-nut
-oaf
-oak
-oar
-oat
-obe
-obi
-oca
-odd
-ode
-ods
-oes
-off
-oft
-ohm
-oho
-ohs
-oil
-oka
-oke
-old
-ole
-oms
-one
-ons
-ooh
-oot
-ope
-ops
-opt
-ora
-orb
-orc
-ore
-ors
-ort
-ose
-oud
-our
-out
-ova
-owe
-owl
-own
-oxo
-oxy
-pac
-pad
-pah
-pal
-pam
-pan
-pap
-par
-pas
-pat
-paw
-pax
-pay
-pea
-pec
-ped
-pee
-peg
-peh
-pen
-pep
-per
-pes
-pet
-pew
-phi
-pht
-pia
-pic
-pie
-pig
-pin
-pip
-pis
-pit
-piu
-pix
-ply
-pod
-poh
-poi
-pol
-pom
-pop
-pot
-pow
-pox
-pro
-pry
-psi
-pub
-pud
-pug
-pul
-pun
-pup
-pur
-pus
-put
-pya
-pye
-pyx
-qat
-qua
-rad
-rag
-rah
-raj
-ram
-ran
-rap
-ras
-rat
-raw
-rax
-ray
-reb
-rec
-red
-ree
-ref
-reg
-rei
-rem
-rep
-res
-ret
-rev
-rex
-rho
-ria
-rib
-rid
-rif
-rig
-rim
-rin
-rip
-rob
-roc
-rod
-roe
-rom
-rot
-row
-rub
-rue
-rug
-rum
-run
-rut
-rya
-rye
-sab
-sac
-sad
-sae
-sag
-sal
-sap
-sat
-sau
-saw
-sax
-say
-sea
-sec
-see
-seg
-sei
-sel
-sen
-ser
-set
-sew
-sex
-sha
-she
-shh
-shy
-sib
-sic
-sim
-sin
-sip
-sir
-sis
-sit
-six
-ska
-ski
-sky
-sly
-sob
-sod
-sol
-son
-sop
-sos
-sot
-sou
-sow
-sox
-soy
-spa
-spy
-sri
-sty
-sub
-sue
-sum
-sun
-sup
-suq
-syn
-tab
-tad
-tae
-tag
-taj
-tam
-tan
-tao
-tap
-tar
-tas
-tat
-tau
-tav
-taw
-tax
-tea
-ted
-tee
-teg
-tel
-ten
-tet
-tew
-the
-tho
-thy
-tic
-tie
-til
-tin
-tip
-tis
-tit
-tod
-toe
-tog
-tom
-ton
-too
-top
-tor
-tot
-tow
-toy
-try
-tsk
-tub
-tug
-tui
-tun
-tup
-tut
-tux
-twa
-two
-tye
-udo
-ugh
-uke
-ulu
-umm
-ump
-uns
-upo
-ups
-urb
-urd
-urn
-use
-uta
-uts
-vac
-van
-var
-vas
-vat
-vau
-vav
-vaw
-vee
-veg
-vet
-vex
-via
-vie
-vig
-vim
-vis
-voe
-vow
-vox
-vug
-wab
-wad
-wae
-wag
-wan
-wap
-war
-was
-wat
-waw
-wax
-way
-web
-wed
-wee
-wen
-wet
-wha
-who
-why
-wig
-win
-wis
-wit
-wiz
-woe
-wog
-wok
-won
-woo
-wop
-wos
-wot
-wow
-wry
-wud
-wye
-wyn
-xis
-yah
-yak
-yam
-yap
-yar
-yaw
-yay
-yea
-yeh
-yen
-yep
-yes
-yet
-yew
-yid
-yin
-yip
-yob
-yod
-yok
-yom
-yon
-you
-yow
-yuk
-yum
-yup
-zag
-zap
-zax
-zed
-zee
-zek
-zig
-zin
-zip
-zit
-zoa
-zoo
+the	5.370000e-02
+and	2.570000e-02
+for	1.020000e-02
+you	9.550000e-03
+was	6.610000e-03
+are	5.500000e-03
+not	4.900000e-03
+but	4.270000e-03
+all	3.310000e-03
+his	3.240000e-03
+one	2.950000e-03
+can	2.880000e-03
+out	2.400000e-03
+has	2.340000e-03
+who	2.190000e-03
+had	2.140000e-03
+her	2.000000e-03
+get	1.910000e-03
+she	1.820000e-03
+new	1.780000e-03
+how	1.740000e-03
+now	1.510000e-03
+its	1.380000e-03
+our	1.380000e-03
+him	1.290000e-03
+see	1.260000e-03
+two	1.260000e-03
+any	1.170000e-03
+way	1.020000e-03
+may	9.550000e-04
+did	9.120000e-04
+day	8.910000e-04
+too	8.910000e-04
+off	8.510000e-04
+why	8.510000e-04
+got	8.130000e-04
+say	7.760000e-04
+man	6.610000e-04
+use	6.460000e-04
+old	5.620000e-04
+own	5.500000e-04
+end	4.790000e-04
+big	4.680000e-04
+put	4.570000e-04
+lot	4.070000e-04
+few	3.980000e-04
+let	3.980000e-04
+set	3.890000e-04
+god	3.720000e-04
+top	3.720000e-04
+yet	3.470000e-04
+bad	3.390000e-04
+men	3.240000e-04
+far	3.160000e-04
+job	3.160000e-04
+try	3.160000e-04
+yes	3.160000e-04
+run	3.090000e-04
+law	2.880000e-04
+war	2.880000e-04
+car	2.820000e-04
+per	2.820000e-04
+ago	2.630000e-04
+guy	2.510000e-04
+pay	2.510000e-04
+win	2.450000e-04
+air	2.340000e-04
+bit	2.340000e-04
+hit	2.340000e-04
+due	2.240000e-04
+ask	2.190000e-04
+saw	2.190000e-04
+low	2.140000e-04
+age	2.090000e-04
+buy	2.090000e-04
+red	2.090000e-04
+act	2.000000e-04
+fun	2.000000e-04
+art	1.950000e-04
+six	1.950000e-04
+son	1.910000e-04
+cut	1.740000e-04
+sex	1.660000e-04
+won	1.580000e-04
+boy	1.480000e-04
+hot	1.450000e-04
+tax	1.380000e-04
+eat	1.350000e-04
+hey	1.320000e-04
+key	1.320000e-04
+mom	1.320000e-04
+cup	1.290000e-04
+led	1.290000e-04
+dog	1.260000e-04
+oil	1.260000e-04
+add	1.230000e-04
+met	1.230000e-04
+bed	1.170000e-04
+die	1.170000e-04
+sea	1.150000e-04
+sir	1.150000e-04
+ten	1.120000e-04
+box	1.100000e-04
+eye	1.050000e-04
+via	1.050000e-04
+gas	1.020000e-04
+ass	1.000000e-04
+ice	1.000000e-04
+kid	9.770000e-05
+sun	9.330000e-05
+gun	9.120000e-05
+wow	9.120000e-05
+dad	8.910000e-05
+fit	8.910000e-05
+bar	8.710000e-05
+pro	8.710000e-05
+fan	8.320000e-05
+gay	7.940000e-05
+sit	7.940000e-05
+pop	7.410000e-05
+ran	7.410000e-05
+fat	7.080000e-05
+lie	6.920000e-05
+sad	6.920000e-05
+bus	6.760000e-05
+tom	6.760000e-05
+mid	6.610000e-05
+bag	6.170000e-05
+bet	6.170000e-05
+cat	6.030000e-05
+joe	6.030000e-05
+nor	6.030000e-05
+van	6.030000e-05
+map	5.750000e-05
+net	5.750000e-05
+aid	5.620000e-05
+fix	5.620000e-05
+fly	5.620000e-05
+dry	5.500000e-05
+mad	5.500000e-05
+web	5.500000e-05
+arm	5.370000e-05
+bay	5.370000e-05
+lee	5.370000e-05
+tea	5.370000e-05
+ill	5.250000e-05
+sky	5.250000e-05
+mix	5.130000e-05
+ben	4.900000e-05
+ray	4.900000e-05
+era	4.680000e-05
+fox	4.570000e-05
+leg	4.570000e-05
+max	4.570000e-05
+sub	4.570000e-05
+lay	4.370000e-05
+sat	4.370000e-05
+bob	4.270000e-05
+don	3.980000e-05
+row	3.980000e-05
+cry	3.890000e-05
+ban	3.550000e-05
+joy	3.550000e-05
+tip	3.550000e-05
+wet	3.470000e-05
+hat	3.390000e-05
+raw	3.390000e-05
+aim	3.240000e-05
+cap	3.240000e-05
+fed	3.240000e-05
+fee	3.240000e-05
+tie	3.240000e-05
+rid	3.160000e-05
+gap	2.950000e-05
+egg	2.880000e-05
+hip	2.880000e-05
+mac	2.820000e-05
+pet	2.820000e-05
+tag	2.750000e-05
+ear	2.690000e-05
+gym	2.690000e-05
+kit	2.630000e-05
+lab	2.630000e-05
+odd	2.630000e-05
+mum	2.570000e-05
+tho	2.570000e-05
+ups	2.570000e-05
+bid	2.510000e-05
+bro	2.510000e-05
+hop	2.510000e-05
+nah	2.510000e-05
+pot	2.510000e-05
+bye	2.450000e-05
+pan	2.450000e-05
+yep	2.450000e-05
+jay	2.400000e-05
+pen	2.400000e-05
+cop	2.340000e-05
+log	2.340000e-05
+sin	2.340000e-05
+doc	2.290000e-05
+rep	2.240000e-05
+rob	2.240000e-05
+ate	2.190000e-05
+sum	2.190000e-05
+gen	2.140000e-05
+ads	2.090000e-05
+del	2.090000e-05
+eve	2.090000e-05
+sec	2.040000e-05
+bat	2.000000e-05
+bow	2.000000e-05
+toy	2.000000e-05
+jet	1.950000e-05
+ton	1.950000e-05
+con	1.910000e-05
+las	1.910000e-05
+pin	1.910000e-05
+tap	1.910000e-05
+huh	1.860000e-05
+pit	1.860000e-05
+rip	1.820000e-05
+ted	1.820000e-05
+yea	1.820000e-05
+pat	1.740000e-05
+spy	1.740000e-05
+pub	1.700000e-05
+bin	1.660000e-05
+dig	1.660000e-05
+sue	1.660000e-05
+ugh	1.660000e-05
+arc	1.620000e-05
+ken	1.620000e-05
+bug	1.580000e-05
+pic	1.580000e-05
+lit	1.550000e-05
+mar	1.550000e-05
+pie	1.550000e-05
+ram	1.550000e-05
+lap	1.510000e-05
+oak	1.510000e-05
+dam	1.480000e-05
+jam	1.480000e-05
+rat	1.480000e-05
+ash	1.450000e-05
+shy	1.450000e-05
+ion	1.410000e-05
+par	1.410000e-05
+cow	1.380000e-05
+pig	1.380000e-05
+rod	1.380000e-05
+zoo	1.380000e-05
+lip	1.350000e-05
+mud	1.350000e-05
+owe	1.350000e-05
+ski	1.350000e-05
+ham	1.320000e-05
+rap	1.320000e-05
+rev	1.320000e-05
+sri	1.320000e-05
+ace	1.290000e-05
+hmm	1.290000e-05
+thy	1.290000e-05
+cam	1.260000e-05
+fig	1.260000e-05
+ore	1.260000e-05
+bee	1.230000e-05
+hug	1.230000e-05
+bud	1.200000e-05
+duo	1.200000e-05
+hub	1.200000e-05
+bio	1.170000e-05
+ink	1.170000e-05
+inn	1.170000e-05
+toe	1.170000e-05
+yup	1.150000e-05
+beg	1.120000e-05
+cos	1.120000e-05
+dip	1.120000e-05
+dot	1.120000e-05
+ave	1.100000e-05
+cum	1.100000e-05
+nut	1.100000e-05
+fur	1.070000e-05
+mob	1.070000e-05
+til	1.070000e-05
+tin	1.070000e-05
+ego	1.050000e-05
+gut	1.050000e-05
+den	1.020000e-05
+pad	1.020000e-05
+sen	1.020000e-05
+tan	1.020000e-05
+pal	9.770000e-06
+gig	9.550000e-06
+jaw	9.550000e-06
+jin	9.550000e-06
+rub	9.330000e-06
+flu	9.120000e-06
+hes	9.120000e-06
+pee	9.120000e-06
+spa	9.120000e-06
+tab	9.120000e-06
+wit	9.120000e-06
+cab	8.910000e-06
+chi	8.910000e-06
+col	8.910000e-06
+ref	8.910000e-06
+cox	8.710000e-06
+gum	8.710000e-06
+jun	8.710000e-06
+jar	8.510000e-06
+kay	8.510000e-06
+pac	8.510000e-06
+boo	8.320000e-06
+ins	8.320000e-06
+wax	8.320000e-06
+yay	8.320000e-06
+hay	8.130000e-06
+mod	8.130000e-06
+fog	7.940000e-06
+lad	7.940000e-06
+opt	7.940000e-06
+tel	7.940000e-06
+vet	7.940000e-06
+ana	7.760000e-06
+aye	7.760000e-06
+cod	7.760000e-06
+fry	7.760000e-06
+hon	7.760000e-06
+rex	7.760000e-06
+med	7.590000e-06
+gem	7.410000e-06
+jew	7.410000e-06
+owl	7.410000e-06
+wee	7.410000e-06
+woo	7.410000e-06
+zip	7.410000e-06
+abs	7.240000e-06
+ant	7.240000e-06
+dug	7.240000e-06
+mon	7.240000e-06
+rig	7.240000e-06
+bra	7.080000e-06
+rim	7.080000e-06
+tub	7.080000e-06
+dee	6.920000e-06
+doe	6.920000e-06
+gel	6.920000e-06
+hut	6.920000e-06
+mat	6.920000e-06
+sox	6.920000e-06
+ivy	6.760000e-06
+bot	6.610000e-06
+dye	6.610000e-06
+nap	6.610000e-06
+tee	6.610000e-06
+alt	6.460000e-06
+gal	6.460000e-06
+lid	6.460000e-06
+amp	6.310000e-06
+awe	6.310000e-06
+lin	6.310000e-06
+mel	6.310000e-06
+ops	6.310000e-06
+sim	6.310000e-06
+wan	6.310000e-06
+axe	6.170000e-06
+hid	6.170000e-06
+res	6.170000e-06
+dom	6.030000e-06
+dev	5.750000e-06
+ooh	5.750000e-06
+ark	5.620000e-06
+bum	5.620000e-06
+cue	5.620000e-06
+lib	5.620000e-06
+rom	5.620000e-06
+mil	5.500000e-06
+nod	5.500000e-06
+dis	5.370000e-06
+ole	5.370000e-06
+yen	5.370000e-06
+rug	5.250000e-06
+tow	5.250000e-06
+mag	5.130000e-06
+mug	5.130000e-06
+pod	5.130000e-06
+fin	5.010000e-06
+nam	5.010000e-06
+rot	5.010000e-06
+apt	4.900000e-06
+dos	4.900000e-06
+sol	4.900000e-06
+ale	4.790000e-06
+gin	4.790000e-06
+reg	4.790000e-06
+heh	4.680000e-06
+lag	4.680000e-06
+sac	4.680000e-06
+sip	4.680000e-06
+eng	4.570000e-06
+wed	4.570000e-06
+elf	4.470000e-06
+kin	4.470000e-06
+mae	4.470000e-06
+var	4.470000e-06
+bam	4.370000e-06
+dub	4.370000e-06
+kat	4.370000e-06
+nun	4.370000e-06
+pup	4.370000e-06
+wig	4.370000e-06
+dow	4.270000e-06
+fax	4.270000e-06
+gag	4.270000e-06
+gee	4.270000e-06
+rum	4.270000e-06
+sis	4.270000e-06
+soy	4.270000e-06
+tar	4.270000e-06
+dim	4.170000e-06
+rec	4.170000e-06
+sic	4.170000e-06
+pam	3.980000e-06
+sap	3.980000e-06
+tis	3.980000e-06
+cis	3.890000e-06
+hum	3.890000e-06
+mis	3.890000e-06
+pas	3.890000e-06
+rib	3.890000e-06
+hog	3.720000e-06
+lea	3.720000e-06
+tor	3.720000e-06
+umm	3.720000e-06
+aha	3.630000e-06
+bun	3.630000e-06
+din	3.630000e-06
+hen	3.630000e-06
+ons	3.630000e-06
+rue	3.630000e-06
+sup	3.630000e-06
+vow	3.630000e-06
+phi	3.550000e-06
+pun	3.550000e-06
+rag	3.550000e-06
+raj	3.550000e-06
+hah	3.470000e-06
+icy	3.470000e-06
+lax	3.470000e-06
+pea	3.470000e-06
+vat	3.470000e-06
+yah	3.470000e-06
+ala	3.390000e-06
+mas	3.390000e-06
+tad	3.390000e-06
+dew	3.310000e-06
+nos	3.310000e-06
+pep	3.310000e-06
+rye	3.310000e-06
+foe	3.240000e-06
+tae	3.240000e-06
+lex	3.160000e-06
+rad	3.160000e-06
+tug	3.160000e-06
+ava	3.090000e-06
+cub	3.090000e-06
+elk	3.090000e-06
+hue	3.090000e-06
+nan	3.090000e-06
+peg	3.090000e-06
+ser	3.090000e-06
+tao	3.090000e-06
+wen	3.090000e-06
+ama	3.020000e-06
+ape	3.020000e-06
+fir	3.020000e-06
+paw	3.020000e-06
+sal	3.020000e-06
+tit	3.020000e-06
+ain	2.880000e-06
+yum	2.880000e-06
+psi	2.820000e-06
+sew	2.820000e-06
+lam	2.750000e-06
+pow	2.750000e-06
+roe	2.750000e-06
+wat	2.750000e-06
+mos	2.690000e-06
+nay	2.690000e-06
+pol	2.690000e-06
+vis	2.690000e-06
+bel	2.630000e-06
+cad	2.570000e-06
+goo	2.570000e-06
+pew	2.570000e-06
+goa	2.510000e-06
+sly	2.510000e-06
+aft	2.450000e-06
+eff	2.450000e-06
+err	2.450000e-06
+mop	2.450000e-06
+hun	2.400000e-06
+mir	2.400000e-06
+sow	2.400000e-06
+als	2.340000e-06
+eta	2.340000e-06
+bop	2.290000e-06
+elm	2.290000e-06
+ems	2.290000e-06
+git	2.290000e-06
+ids	2.290000e-06
+sos	2.290000e-06
+dui	2.240000e-06
+jab	2.240000e-06
+obi	2.240000e-06
+pip	2.240000e-06
+sha	2.240000e-06
+tat	2.240000e-06
+vie	2.240000e-06
+yin	2.240000e-06
+bis	2.190000e-06
+bog	2.190000e-06
+dun	2.140000e-06
+lux	2.140000e-06
+nil	2.140000e-06
+aba	2.090000e-06
+cor	2.090000e-06
+dab	2.090000e-06
+fag	2.090000e-06
+fil	2.090000e-06
+fro	2.090000e-06
+nip	2.090000e-06
+yeh	2.090000e-06
+bey	2.040000e-06
+hex	2.040000e-06
+lac	2.040000e-06
+ode	2.040000e-06
+roc	2.040000e-06
+woe	2.040000e-06
+ami	2.000000e-06
+coo	2.000000e-06
+jog	2.000000e-06
+jug	2.000000e-06
+loo	2.000000e-06
+pax	2.000000e-06
+taj	2.000000e-06
+veg	2.000000e-06
+wha	2.000000e-06
+fay	1.950000e-06
+tau	1.950000e-06
+pap	1.910000e-06
+rem	1.910000e-06
+tam	1.910000e-06
+biz	1.860000e-06
+sob	1.860000e-06
+dex	1.820000e-06
+fad	1.820000e-06
+orb	1.820000e-06
+dal	1.780000e-06
+hoe	1.780000e-06
+oft	1.780000e-06
+sag	1.780000e-06
+sod	1.780000e-06
+bas	1.740000e-06
+hem	1.740000e-06
+ifs	1.740000e-06
+naw	1.740000e-06
+urn	1.740000e-06
+wis	1.740000e-06
+deb	1.700000e-06
+eel	1.700000e-06
+imp	1.700000e-06
+vox	1.700000e-06
+ars	1.660000e-06
+att	1.660000e-06
+ich	1.660000e-06
+ire	1.660000e-06
+nom	1.660000e-06
+cot	1.620000e-06
+eth	1.620000e-06
+nee	1.620000e-06
+ras	1.620000e-06
+rin	1.620000e-06
+tic	1.620000e-06
+ado	1.580000e-06
+ani	1.580000e-06
+boa	1.510000e-06
+nag	1.510000e-06
+ret	1.510000e-06
+ers	1.480000e-06
+lei	1.480000e-06
+mor	1.480000e-06
+ova	1.480000e-06
+pom	1.480000e-06
+mol	1.450000e-06
+tod	1.450000e-06
+tot	1.450000e-06
+zee	1.450000e-06
+coz	1.410000e-06
+eau	1.410000e-06
+jus	1.410000e-06
+lev	1.410000e-06
+moo	1.410000e-06
+ply	1.410000e-06
+sax	1.410000e-06
+dak	1.380000e-06
+ere	1.380000e-06
+het	1.380000e-06
+bal	1.350000e-06
+lat	1.350000e-06
+wiz	1.350000e-06
+bah	1.320000e-06
+dah	1.320000e-06
+nab	1.320000e-06
+ora	1.320000e-06
+rei	1.320000e-06
+yak	1.320000e-06
+daw	1.290000e-06
+mig	1.290000e-06
+pia	1.290000e-06
+pug	1.290000e-06
+rut	1.290000e-06
+coy	1.260000e-06
+fob	1.260000e-06
+hae	1.260000e-06
+haw	1.260000e-06
+jig	1.260000e-06
+mot	1.260000e-06
+mow	1.260000e-06
+lis	1.230000e-06
+lug	1.230000e-06
+luv	1.230000e-06
+nit	1.230000e-06
+aga	1.200000e-06
+hoy	1.200000e-06
+pry	1.200000e-06
+alp	1.170000e-06
+bos	1.170000e-06
+gan	1.170000e-06
+keg	1.170000e-06
+koi	1.170000e-06
+ais	1.150000e-06
+dey	1.150000e-06
+fer	1.150000e-06
+ism	1.150000e-06
+nib	1.150000e-06
+rah	1.150000e-06
+sae	1.150000e-06
+wad	1.150000e-06
+asp	1.120000e-06
+bod	1.120000e-06
+emu	1.120000e-06
+jag	1.120000e-06
+ska	1.120000e-06
+zig	1.120000e-06
+cob	1.100000e-06
+ebb	1.100000e-06
+ecu	1.100000e-06
+fas	1.100000e-06
+gnu	1.100000e-06
+hap	1.100000e-06
+kip	1.100000e-06
+kos	1.100000e-06
+yam	1.100000e-06
+ria	1.070000e-06
+syn	1.070000e-06
+tas	1.070000e-06
+vee	1.070000e-06
+wag	1.070000e-06
+wot	1.070000e-06
+yew	1.070000e-06
+dup	1.050000e-06
+mus	1.050000e-06
+pus	1.050000e-06
+vas	1.050000e-06
+zed	1.050000e-06
+cog	1.020000e-06
+mun	1.020000e-06
+ohm	1.020000e-06
+orc	1.020000e-06
+pes	1.020000e-06
+pox	1.020000e-06
+shh	1.020000e-06
+tsk	1.020000e-06
+ump	1.020000e-06
+mew	1.000000e-06
+nix	1.000000e-06
+dud	9.770000e-07
+ell	9.770000e-07
+gar	9.770000e-07
+ged	9.770000e-07
+fey	9.550000e-07
+ley	9.550000e-07
+lob	9.550000e-07
+moa	9.550000e-07
+bib	9.330000e-07
+fez	9.330000e-07
+hag	9.330000e-07
+obe	9.330000e-07
+tun	9.330000e-07
+cee	9.120000e-07
+maw	9.120000e-07
+zap	9.120000e-07
+vac	8.910000e-07
+aff	8.710000e-07
+tut	8.710000e-07
+yap	8.710000e-07
+hao	8.510000e-07
+baa	8.320000e-07
+cur	8.320000e-07
+gad	8.320000e-07
+nth	8.320000e-07
+ilk	8.130000e-07
+mem	8.130000e-07
+oat	7.940000e-07
+dag	7.760000e-07
+dol	7.760000e-07
+fem	7.760000e-07
+oar	7.760000e-07
+bub	7.590000e-07
+jee	7.410000e-07
+pur	7.410000e-07
+sop	7.410000e-07
+wop	7.410000e-07
+yaw	7.410000e-07
+hep	7.240000e-07
+jot	7.240000e-07
+sei	7.240000e-07
+wry	7.240000e-07
+yom	7.240000e-07
+yon	7.240000e-07
+aas	7.080000e-07
+awa	7.080000e-07
+dit	7.080000e-07
+gul	7.080000e-07
+sel	7.080000e-07
+vex	7.080000e-07
+els	6.920000e-07
+qua	6.920000e-07
+sou	6.920000e-07
+fen	6.760000e-07
+gab	6.760000e-07
+oxy	6.760000e-07
+ped	6.760000e-07
+poi	6.760000e-07
+tux	6.760000e-07
+ess	6.610000e-07
+gat	6.610000e-07
+nae	6.610000e-07
+nim	6.610000e-07
+yip	6.610000e-07
+aah	6.460000e-07
+foy	6.460000e-07
+rho	6.460000e-07
+tet	6.460000e-07
+reb	6.310000e-07
+ree	6.310000e-07
+cel	6.170000e-07
+ewe	6.170000e-07
+jib	6.170000e-07
+wok	6.170000e-07
+zag	6.170000e-07
+bap	6.030000e-07
+dor	6.030000e-07
+kor	6.030000e-07
+mim	6.030000e-07
+twa	6.030000e-07
+abo	5.890000e-07
+dap	5.890000e-07
+gam	5.890000e-07
+neb	5.890000e-07
+pah	5.890000e-07
+sab	5.890000e-07
+tui	5.890000e-07
+wye	5.890000e-07
+ait	5.750000e-07
+hin	5.750000e-07
+hob	5.750000e-07
+nus	5.750000e-07
+uns	5.750000e-07
+bur	5.620000e-07
+mut	5.620000e-07
+pix	5.620000e-07
+yar	5.620000e-07
+mib	5.500000e-07
+wap	5.500000e-07
+cay	5.370000e-07
+lar	5.370000e-07
+pis	5.370000e-07
+sot	5.370000e-07
+tye	5.370000e-07
+yow	5.370000e-07
+fet	5.250000e-07
+lye	5.250000e-07
+noh	5.250000e-07
+arf	5.130000e-07
+emf	5.130000e-07
+yuk	5.130000e-07
+eon	5.010000e-07
+gob	5.010000e-07
+lop	5.010000e-07
+noo	4.900000e-07
+oot	4.900000e-07
+uta	4.900000e-07
+vim	4.900000e-07
+gor	4.680000e-07
+feu	4.570000e-07
+fib	4.570000e-07
+lox	4.470000e-07
+nob	4.470000e-07
+ope	4.370000e-07
+eke	4.270000e-07
+iff	4.270000e-07
+alb	4.170000e-07
+ane	4.170000e-07
+fie	4.170000e-07
+nog	4.170000e-07
+arb	4.070000e-07
+hew	4.070000e-07
+moc	4.070000e-07
+oka	4.070000e-07
+pye	4.070000e-07
+pec	3.980000e-07
+lum	3.890000e-07
+ors	3.890000e-07
+erg	3.800000e-07
+fou	3.800000e-07
+gib	3.800000e-07
+uts	3.800000e-07
+caw	3.720000e-07
+kop	3.720000e-07
+lav	3.720000e-07
+hic	3.630000e-07
+hod	3.630000e-07
+sau	3.630000e-07
+eft	3.550000e-07
+foh	3.550000e-07
+nub	3.550000e-07
+oxo	3.550000e-07
+wyn	3.550000e-07
+ick	3.470000e-07
+jut	3.470000e-07
+kea	3.470000e-07
+haj	3.390000e-07
+ens	3.240000e-07
+rif	3.240000e-07
+uke	3.240000e-07
+fon	3.160000e-07
+hie	3.160000e-07
+oke	3.090000e-07
+tew	3.020000e-07
+pud	2.950000e-07
+sty	2.950000e-07
+amu	2.880000e-07
+leu	2.880000e-07
+ods	2.880000e-07
+vig	2.820000e-07
+fop	2.750000e-07
+koa	2.750000e-07
+oud	2.750000e-07
+oca	2.690000e-07
+oms	2.690000e-07
+udo	2.690000e-07
+kas	2.630000e-07
+seg	2.630000e-07
+awl	2.570000e-07
+tog	2.570000e-07
+avo	2.510000e-07
+cud	2.510000e-07
+pul	2.510000e-07
+waw	2.510000e-07
+zit	2.510000e-07
+dib	2.450000e-07
+ohs	2.450000e-07
+ort	2.450000e-07
+poh	2.450000e-07
+sib	2.450000e-07
+irk	2.400000e-07
+mog	2.400000e-07
+zin	2.400000e-07
+cep	2.340000e-07
+aby	2.290000e-07
+eld	2.240000e-07
+gox	2.190000e-07
+gid	2.140000e-07
+lek	2.140000e-07
+cwm	2.090000e-07
+ern	2.090000e-07
+taw	2.090000e-07
+aal	2.040000e-07
+eme	2.040000e-07
+fid	2.040000e-07
+ose	2.040000e-07
+bys	2.000000e-07
+gae	1.950000e-07
+goy	1.950000e-07
+auk	1.860000e-07
+ail	1.820000e-07
+jeu	1.820000e-07
+lez	1.820000e-07
+oaf	1.780000e-07
+fug	1.740000e-07
+kir	1.740000e-07
+oes	1.740000e-07
+fiz	1.700000e-07
+awn	1.580000e-07
+kab	1.580000e-07
+azo	1.550000e-07
+piu	1.550000e-07
+oho	1.510000e-07
+fud	1.480000e-07
+gie	1.480000e-07
+brr	1.410000e-07
+kif	1.380000e-07
+wos	1.380000e-07
+kae	1.350000e-07
+efs	1.320000e-07
+guv	1.320000e-07
+hup	1.320000e-07
+kep	1.320000e-07
+rya	1.200000e-07
+vav	1.200000e-07
+wog	1.200000e-07
+yid	1.200000e-07
+tup	1.170000e-07
+tav	1.150000e-07
+teg	1.150000e-07
+ulu	1.150000e-07
+yod	1.150000e-07
+wud	1.100000e-07
+feh	1.070000e-07
+gyp	1.070000e-07
+yok	1.070000e-07
+wae	1.050000e-07
+kob	1.020000e-07
+kef	9.770000e-08
+hyp	9.550000e-08
+wab	9.550000e-08
+gip	9.330000e-08
+khi	9.330000e-08
+urb	9.330000e-08
+gey	9.120000e-08
+yob	9.120000e-08
+edh	8.910000e-08
+vaw	8.710000e-08
+peh	8.130000e-08
+xis	8.130000e-08
+rax	7.940000e-08
+ghi	7.590000e-08
+kaf	7.590000e-08
+qat	7.240000e-08
+jow	7.080000e-08
+urd	7.080000e-08
+pht	6.760000e-08
+ays	6.460000e-08
+voe	6.170000e-08
+adz	5.250000e-08
+vau	4.790000e-08
+zek	4.790000e-08
+kue	4.680000e-08
+zoa	4.370000e-08
+upo	4.070000e-08
+mho	3.720000e-08
+pyx	3.470000e-08
+zax	3.390000e-08
+kex	3.090000e-08
+fub	2.630000e-08
+suq	2.570000e-08
+pya	2.000000e-08
+vug	0.000000e+00

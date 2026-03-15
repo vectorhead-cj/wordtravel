@@ -2,6 +2,7 @@ import words3Raw from '../data/words_en_3.txt';
 import words4Raw from '../data/words_en_4.txt';
 import words5Raw from '../data/words_en_5.txt';
 import words6Raw from '../data/words_en_6.txt';
+import { PUZZLE_CONFIG } from './config';
 
 export interface ConstraintQuery {
   positionConstraints?: Map<number, string>;
@@ -10,17 +11,23 @@ export interface ConstraintQuery {
   excludeWords?: Set<string>;
 }
 
+interface DictionaryOptions {
+  minFrequency?: number;
+}
+
 class Dictionary {
   private wordSets: Map<number, Set<string>>;
   private wordArrays: Map<number, string[]>;
   // Key: "length:position:letter" → words matching that constraint
   private positionIndex: Map<string, string[]>;
   private isInitialized: boolean = false;
+  private readonly options: DictionaryOptions;
 
-  constructor() {
+  constructor(options: DictionaryOptions = {}) {
     this.wordSets = new Map();
     this.wordArrays = new Map();
     this.positionIndex = new Map();
+    this.options = options;
   }
 
   initialize(): void {
@@ -35,11 +42,20 @@ class Dictionary {
   }
 
   private loadWords(length: number, raw: string): void {
+    const { minFrequency } = this.options;
+
     const words = raw
       .trim()
       .split('\n')
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length === length);
+      .flatMap(line => {
+        const [word, freqStr] = line.trim().split('\t');
+        if (!word || word.length !== length) return [];
+        if (minFrequency !== undefined) {
+          const freq = parseFloat(freqStr);
+          if (isNaN(freq) || freq < minFrequency) return [];
+        }
+        return [word.toLowerCase()];
+      });
 
     this.wordSets.set(length, new Set(words));
     this.wordArrays.set(length, words);
@@ -139,5 +155,8 @@ class Dictionary {
   }
 }
 
-export const dictionary = new Dictionary();
-dictionary.initialize();
+export const playerDictionary = new Dictionary();
+playerDictionary.initialize();
+
+export const generatorDictionary = new Dictionary({ minFrequency: PUZZLE_CONFIG.GENERATOR_MIN_WORD_FREQUENCY });
+generatorDictionary.initialize();

@@ -8,7 +8,7 @@ import {
   getRowValidationState,
 } from './GameLogic';
 import { Grid, Cell, HardMatchTile, SoftMatchTile, ForbiddenMatchTile, RuleTile } from './types';
-import { dictionary } from './Dictionary';
+import { playerDictionary } from './Dictionary';
 
 function createTestCell(
   letter: string | null = null,
@@ -34,7 +34,7 @@ function createTestGrid(cells: Cell[][]): Grid {
 
 describe('GameLogic Validation', () => {
   beforeAll(() => {
-    dictionary.initialize();
+    playerDictionary.initialize();
   });
 
   describe('validateSpelling', () => {

@@ -8,7 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Grid as GridType, GameMode } from '../engine/types';
-import { countValidNextWords } from '../engine/GameLogic';
+import { countValidNextWords } from '../engine/HintEngine';
 import { colors, layout } from '../theme';
 import { CellView } from './CellView';
 import { ErrorToast } from './ErrorToast';

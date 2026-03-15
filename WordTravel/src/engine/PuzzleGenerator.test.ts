@@ -1,6 +1,6 @@
 import { PuzzleGenerator } from './PuzzleGenerator';
 import { parseGrid, serializeGrid } from './PuzzleNotation';
-import { dictionary } from './Dictionary';
+import { generatorDictionary } from './Dictionary';
 import { Grid, PuzzleType } from './types';
 import {
   validateHardMatchTiles,
@@ -14,7 +14,7 @@ const ITERATIONS = 5000;
 
 describe('PuzzleGenerator', () => {
   beforeAll(() => {
-    dictionary.initialize();
+    generatorDictionary.initialize();
   });
 
   function generateAndParse(puzzleType: PuzzleType): Grid {
@@ -72,8 +72,8 @@ describe('PuzzleGenerator', () => {
       const firstWord = getWordFromRow(grid, wordRows[0]);
       const lastWord = getWordFromRow(grid, wordRows[wordRows.length - 1]);
 
-      expect(dictionary.isValidWord(firstWord)).toBe(true);
-      expect(dictionary.isValidWord(lastWord)).toBe(true);
+      expect(generatorDictionary.isValidWord(firstWord)).toBe(true);
+      expect(generatorDictionary.isValidWord(lastWord)).toBe(true);
     });
   });
 

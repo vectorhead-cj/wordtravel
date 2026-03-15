@@ -1,6 +1,6 @@
 import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
-import { dictionary, ConstraintQuery } from './Dictionary';
+import { generatorDictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
 
 const MAX_GENERATION_ATTEMPTS = 50;
@@ -416,7 +416,7 @@ export class PuzzleGenerator {
         mustContain: mustContain.length > 0 ? mustContain : undefined,
         mustNotContain: mustNotContain.size > 0 ? mustNotContain : undefined,
       };
-      const candidates = dictionary.getWordsMatchingConstraints(wordLength, query);
+      const candidates = generatorDictionary.getWordsMatchingConstraints(wordLength, query);
       if (candidates.length === 0) return false;
     }
 
@@ -439,7 +439,7 @@ export class PuzzleGenerator {
   }
 
   private fillSlotWithRandomWord(grid: Grid, slot: WordSlot): void {
-    const word = dictionary.getRandomWord(slot.length);
+    const word = generatorDictionary.getRandomWord(slot.length);
     if (!word) return;
 
     for (let i = 0; i < slot.length; i++) {
