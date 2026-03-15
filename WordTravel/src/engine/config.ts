@@ -9,5 +9,9 @@ export const PUZZLE_CONFIG = {
   // Words with frequency below this threshold are excluded from puzzle generation and hint counting.
   // Raise to restrict to more common words; lower to broaden the generator vocabulary.
   GENERATOR_MIN_WORD_FREQUENCY: 1e-6,
+
+  DIFFICULTY_SIMULATION_TRIALS: 200,
+  // successRate >= easy → easy, >= medium → medium, else hard
+  DIFFICULTY_THRESHOLDS: { easy: 0.30, medium: 0.05 } as { easy: number; medium: number },
 } as const;
 

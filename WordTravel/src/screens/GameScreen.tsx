@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GameMode, GameResult, PuzzleType, Grid as GridType, HintLevel } from '../engine/types';
+import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
@@ -11,6 +11,7 @@ import { colors } from '../theme';
 interface GameScreenProps {
   mode: GameMode;
   puzzleType?: PuzzleType;
+  difficulty?: Difficulty;
   onGameComplete: (result: GameResult) => void;
   onBack: () => void;
   paddingRowsTop?: number;
@@ -20,6 +21,7 @@ interface GameScreenProps {
 export function GameScreen({ 
   mode, 
   puzzleType = 'open',
+  difficulty = 'easy',
   onGameComplete, 
   onBack,
   paddingRowsTop = 3,
@@ -27,8 +29,8 @@ export function GameScreen({
 }: GameScreenProps) {
   const [grid, setGrid] = useState<GridType>(() => {
     if (mode === 'puzzle') {
-      const puzzleString = puzzleGenerator.generatePuzzle(puzzleType);
-      return addPadding(parseGrid(puzzleString), paddingRowsTop, paddingRowsBottom);
+      const { puzzle } = puzzleGenerator.generatePuzzle(puzzleType, difficulty);
+      return addPadding(parseGrid(puzzle), paddingRowsTop, paddingRowsBottom);
     }
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });

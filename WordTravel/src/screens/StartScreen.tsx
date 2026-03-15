@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
-import { GameMode, PuzzleType } from '../engine/types';
+import { GameMode, PuzzleType, Difficulty } from '../engine/types';
 import { colors } from '../theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -8,15 +8,23 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 interface StartScreenProps {
-  onSelectMode: (mode: GameMode, puzzleType?: PuzzleType) => void;
+  onSelectMode: (mode: GameMode, puzzleType?: PuzzleType, difficulty?: Difficulty) => void;
 }
+
+const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 
 export function StartScreen({ onSelectMode }: StartScreenProps) {
   const [showPuzzleTypes, setShowPuzzleTypes] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('easy');
 
   const handlePuzzlePress = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowPuzzleTypes(!showPuzzleTypes);
+  };
+
+  const handleDifficultyPress = (d: Difficulty) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSelectedDifficulty(d);
   };
 
   return (
@@ -36,21 +44,43 @@ export function StartScreen({ onSelectMode }: StartScreenProps) {
 
         {showPuzzleTypes && (
           <View style={styles.subButtons}>
+            <View style={styles.difficultyRow}>
+              {DIFFICULTIES.map(d => (
+                <TouchableOpacity
+                  key={d}
+                  style={[
+                    styles.difficultyChip,
+                    selectedDifficulty === d && styles.difficultyChipSelected,
+                  ]}
+                  onPress={() => handleDifficultyPress(d)}
+                >
+                  <Text
+                    style={[
+                      styles.difficultyChipText,
+                      selectedDifficulty === d && styles.difficultyChipTextSelected,
+                    ]}
+                  >
+                    {d.charAt(0).toUpperCase() + d.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <TouchableOpacity
               style={styles.subButton}
-              onPress={() => onSelectMode('puzzle', 'open')}
+              onPress={() => onSelectMode('puzzle', 'open', selectedDifficulty)}
             >
               <Text style={styles.subButtonText}>Open</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.subButton}
-              onPress={() => onSelectMode('puzzle', 'bridge')}
+              onPress={() => onSelectMode('puzzle', 'bridge', selectedDifficulty)}
             >
               <Text style={styles.subButtonText}>Bridge</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.subButton}
-              onPress={() => onSelectMode('puzzle', 'semi')}
+              onPress={() => onSelectMode('puzzle', 'semi', selectedDifficulty)}
             >
               <Text style={styles.subButtonText}>Semi</Text>
             </TouchableOpacity>
@@ -109,6 +139,31 @@ const styles = StyleSheet.create({
   subButtons: {
     marginBottom: 16,
     gap: 8,
+  },
+  difficultyRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  difficultyChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.textMuted,
+    backgroundColor: colors.surface,
+  },
+  difficultyChipSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
+  },
+  difficultyChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  difficultyChipTextSelected: {
+    color: colors.textOnAccent,
   },
   subButton: {
     backgroundColor: colors.surface,

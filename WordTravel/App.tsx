@@ -7,7 +7,7 @@ import {
 import { StartScreen } from './src/screens/StartScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
-import { GameMode, GameResult, PuzzleType } from './src/engine/types';
+import { GameMode, GameResult, PuzzleType, Difficulty } from './src/engine/types';
 import { colors } from './src/theme';
 
 type Screen = 'start' | 'game' | 'result';
@@ -28,11 +28,13 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('start');
   const [gameMode, setGameMode] = useState<GameMode>('puzzle');
   const [puzzleType, setPuzzleType] = useState<PuzzleType>('open');
+  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
-  const handleSelectMode = (mode: GameMode, selectedPuzzleType?: PuzzleType) => {
+  const handleSelectMode = (mode: GameMode, selectedPuzzleType?: PuzzleType, selectedDifficulty?: Difficulty) => {
     setGameMode(mode);
     setPuzzleType(selectedPuzzleType ?? 'open');
+    setDifficulty(selectedDifficulty ?? 'easy');
     setCurrentScreen('game');
   };
 
@@ -59,6 +61,7 @@ function AppContent() {
           <GameScreen
             mode={gameMode}
             puzzleType={puzzleType}
+            difficulty={difficulty}
             onGameComplete={handleGameComplete}
             onBack={handleBackFromGame}
           />

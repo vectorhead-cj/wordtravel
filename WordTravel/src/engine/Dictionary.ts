@@ -20,6 +20,8 @@ class Dictionary {
   private wordArrays: Map<number, string[]>;
   // Key: "length:position:letter" → words matching that constraint
   private positionIndex: Map<string, string[]>;
+  // Key: "length:letter" → words containing that letter (any position)
+  private letterIndex: Map<string, string[]>;
   private isInitialized: boolean = false;
   private readonly options: DictionaryOptions;
 
@@ -27,6 +29,7 @@ class Dictionary {
     this.wordSets = new Map();
     this.wordArrays = new Map();
     this.positionIndex = new Map();
+    this.letterIndex = new Map();
     this.options = options;
   }
 
@@ -67,6 +70,17 @@ class Dictionary {
         if (!bucket) {
           bucket = [];
           this.positionIndex.set(key, bucket);
+        }
+        bucket.push(word);
+      }
+
+      const uniqueLetters = new Set(word);
+      for (const letter of uniqueLetters) {
+        const key = `${length}:${letter}`;
+        let bucket = this.letterIndex.get(key);
+        if (!bucket) {
+          bucket = [];
+          this.letterIndex.set(key, bucket);
         }
         bucket.push(word);
       }
@@ -127,7 +141,20 @@ class Dictionary {
       }
     }
 
-    // Start from full word list if no position constraints narrowed it
+    // Use letter index to narrow candidates when only mustContain is available
+    if (candidates === null && mustContain && mustContain.length > 0) {
+      for (const letter of mustContain) {
+        const bucket = this.letterIndex.get(`${length}:${letter}`) ?? [];
+        if (candidates === null) {
+          candidates = [...bucket];
+        } else {
+          const bucketSet = new Set(bucket);
+          candidates = candidates.filter(w => bucketSet.has(w));
+        }
+        if (candidates.length === 0) return [];
+      }
+    }
+
     if (candidates === null) {
       candidates = [...(this.wordArrays.get(length) ?? [])];
     }

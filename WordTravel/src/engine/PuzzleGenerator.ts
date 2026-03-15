@@ -1,23 +1,55 @@
-import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
+import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, Difficulty, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
 import { PUZZLE_CONFIG } from './config';
 import { generatorDictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
+import { simulatePuzzleDifficulty } from './DifficultySimulator';
 
 const MAX_GENERATION_ATTEMPTS = 50;
 
+export interface GeneratedPuzzle {
+  puzzle: string;
+  difficulty: Difficulty;
+  successRate: number;
+}
+
 export class PuzzleGenerator {
-  generatePuzzle(puzzleType: PuzzleType = 'open'): string {
-    let lastGrid: Grid | null = null;
+  generatePuzzle(puzzleType: PuzzleType = 'open', targetDifficulty?: Difficulty): GeneratedPuzzle {
+    let bestResult: GeneratedPuzzle | null = null;
+
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
       const config = this.generatePuzzleConfig(0, 0, puzzleType);
       const grid = this.createGridFromConfig(config, puzzleType);
-      lastGrid = grid;
-      if (this.isGridValid(grid)) {
-        return serializeGrid(grid);
+
+      if (!this.isGridValid(grid)) continue;
+
+      const sim = simulatePuzzleDifficulty(grid);
+      const result: GeneratedPuzzle = {
+        puzzle: serializeGrid(grid),
+        difficulty: sim.difficulty,
+        successRate: sim.successRate,
+      };
+
+      if (!targetDifficulty || sim.difficulty === targetDifficulty) {
+        return result;
       }
+
+      bestResult = bestResult ?? result;
     }
-    console.warn('[PuzzleGenerator] Max generation attempts reached, returning best-effort puzzle');
-    return serializeGrid(lastGrid!);
+
+    if (bestResult) {
+      console.warn(`[PuzzleGenerator] Could not match target difficulty "${targetDifficulty}", returning best-effort (${bestResult.difficulty})`);
+      return bestResult;
+    }
+
+    console.warn('[PuzzleGenerator] Max generation attempts reached with no valid grid');
+    const config = this.generatePuzzleConfig(0, 0, puzzleType);
+    const grid = this.createGridFromConfig(config, puzzleType);
+    const sim = simulatePuzzleDifficulty(grid);
+    return {
+      puzzle: serializeGrid(grid),
+      difficulty: sim.difficulty,
+      successRate: sim.successRate,
+    };
   }
 
   generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1, puzzleType: PuzzleType = 'open'): PuzzleConfig {
@@ -288,7 +320,7 @@ export class PuzzleGenerator {
     }
   }
 
-  private isGridValid(grid: Grid): boolean {
+  isGridValid(grid: Grid): boolean {
     for (let r = 0; r < grid.rows; r++) {
       for (let c = 0; c < grid.cols; c++) {
         const cell = grid.cells[r][c];
