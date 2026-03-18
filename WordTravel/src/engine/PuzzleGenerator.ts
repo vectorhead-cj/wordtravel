@@ -23,6 +23,8 @@ export class PuzzleGenerator {
       if (!this.isGridValid(grid)) continue;
 
       const sim = simulatePuzzleDifficulty(grid);
+      if (sim.difficulty === null) continue;
+
       const result: GeneratedPuzzle = {
         puzzle: serializeGrid(grid),
         difficulty: sim.difficulty,

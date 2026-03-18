@@ -11,7 +11,7 @@ export const PUZZLE_CONFIG = {
   GENERATOR_MIN_WORD_FREQUENCY: 1e-6,
 
   DIFFICULTY_SIMULATION_TRIALS: 200,
-  // successRate >= easy → easy, >= medium → medium, else hard
-  DIFFICULTY_THRESHOLDS: { easy: 0.30, medium: 0.05 } as { easy: number; medium: number },
+  // successRate >= easy → easy, >= medium → medium, >= hard → hard, else rejected
+  DIFFICULTY_THRESHOLDS: { easy: 0.30, medium: 0.05, hard: 0.02 } as { easy: number; medium: number; hard: number },
 } as const;
 

@@ -4,15 +4,16 @@ import { PUZZLE_CONFIG } from './config';
 
 export interface SimulationResult {
   successRate: number;
-  difficulty: Difficulty;
+  difficulty: Difficulty | null;
   trials: number;
 }
 
-export function classifyDifficulty(successRate: number): Difficulty {
-  const { easy, medium } = PUZZLE_CONFIG.DIFFICULTY_THRESHOLDS;
+export function classifyDifficulty(successRate: number): Difficulty | null {
+  const { easy, medium, hard } = PUZZLE_CONFIG.DIFFICULTY_THRESHOLDS;
   if (successRate >= easy) return 'easy';
   if (successRate >= medium) return 'medium';
-  return 'hard';
+  if (successRate >= hard) return 'hard';
+  return null;
 }
 
 export function simulatePuzzleDifficulty(
