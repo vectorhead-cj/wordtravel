@@ -1,6 +1,7 @@
 export type GameMode = 'puzzle' | 'action';
 export type PuzzleType = 'open' | 'bridge' | 'semi';
 export type HintLevel = 'off' | 'count' | 'example';
+export type SolveMode = 'off' | 'solve';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export type CellState = 'empty' | 'filled' | 'locked';

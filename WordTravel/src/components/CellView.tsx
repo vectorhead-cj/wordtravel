@@ -9,9 +9,10 @@ interface CellViewProps {
   tileSize: number;
   badgeCount: number | null;
   badgeExamples?: string[];
+  ghostLetter?: string;
 }
 
-export function CellView({ cell, cellSize, tileSize, badgeCount, badgeExamples }: CellViewProps) {
+export function CellView({ cell, cellSize, tileSize, badgeCount, badgeExamples, ghostLetter }: CellViewProps) {
   if (!cell.accessible) {
     if (badgeCount !== null) {
       return (
@@ -45,11 +46,15 @@ export function CellView({ cell, cellSize, tileSize, badgeCount, badgeExamples }
         cell.fixed && { backgroundColor: colors.background },
       ]}>
         <View style={styles.cellContent}>
-          {cell.letter && (
+          {cell.letter ? (
             <View style={styles.letterContainer}>
               <TextInput style={styles.letter} value={cell.letter} editable={false} />
             </View>
-          )}
+          ) : ghostLetter ? (
+            <View style={styles.letterContainer}>
+              <Text style={styles.ghostLetter}>{ghostLetter}</Text>
+            </View>
+          ) : null}
           {showFilledCircle && <Text style={styles.ruleIndicator}>●</Text>}
           {showHollowCircle && <Text style={styles.ruleIndicator}>○</Text>}
           {showForbidden && <Text style={styles.ruleIndicator}>−</Text>}
@@ -106,6 +111,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.letterDefault,
     textAlign: 'center',
+  },
+  ghostLetter: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: colors.textMuted,
+    textAlign: 'center',
+    opacity: 0.5,
   },
   ruleIndicator: {
     position: 'absolute',

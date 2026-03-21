@@ -182,12 +182,6 @@ function getMatchingWordsForRow(grid: Grid, targetRow: number): string[] {
       break;
     }
   }
-  console.log(
-    `[WordTravel] possible ${wordLength} letter words that satisfy rules after "${previousWord}": ${words.length}` +
-    ` [hard=${[...hardMatchConstraints.entries()].map(([i,l])=>`[${i}]=${l}`).join(',')}` +
-    ` soft=${softMatchRequired.join(',')}` +
-    ` forbidden=${[...forbiddenLetters].join(',')}]`
-  );
 
   return words;
 }

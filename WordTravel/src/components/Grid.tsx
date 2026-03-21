@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import {
   View,
+  Text,
   TextInput,
   ScrollView,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
+import { SolveFromHereResult } from '../engine/DifficultySimulator';
 import { countValidNextWords, getValidNextWords } from '../engine/HintEngine';
 import { colors, layout } from '../theme';
 import { CellView } from './CellView';
@@ -20,9 +22,10 @@ interface GridProps {
   onGridChange: (grid: GridType) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
   hintLevel: HintLevel;
+  solveOverlay?: SolveFromHereResult | null;
 }
 
-export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel }: GridProps) {
+export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel, solveOverlay }: GridProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
 
@@ -101,6 +104,11 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel }: Gr
                   const showBadge = colIndex === badgeColumns[rowIndex];
                   const hintData = showBadge ? hintDataPerRow[rowIndex] : null;
 
+                  const solvedCell = solveOverlay?.solution?.cells[rowIndex]?.[colIndex];
+                  const ghostLetter = solvedCell?.letter && !cell.letter
+                    ? solvedCell.letter
+                    : undefined;
+
                   return (
                     <CellView
                       key={`${rowIndex}-${colIndex}`}
@@ -109,6 +117,7 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel }: Gr
                       tileSize={tileSize}
                       badgeCount={hintData?.count ?? null}
                       badgeExamples={hintData?.examples}
+                      ghostLetter={ghostLetter}
                     />
                   );
                 })}
@@ -117,6 +126,17 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel }: Gr
           </View>
         </ScrollView>
       </Pressable>
+
+      {solveOverlay && (
+        <View style={styles.solveStatContainer}>
+          <Text style={styles.solveStatText}>
+            Solvable: {(solveOverlay.successRate * 100).toFixed(1)}% (1000 runs)
+          </Text>
+          {!solveOverlay.solution && (
+            <Text style={styles.solveStatNoSolution}>No solution found</Text>
+          )}
+        </View>
+      )}
 
       <ErrorToast message={errorMessage} />
 
@@ -158,5 +178,24 @@ const styles = StyleSheet.create({
     left: 0,
     width: 1,
     height: 1,
+  },
+  solveStatContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  solveStatText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  solveStatNoSolution: {
+    fontSize: 12,
+    color: colors.ruleIndicatorNeutral,
+    marginTop: 4,
   },
 });

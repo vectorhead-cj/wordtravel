@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel } from '../engine/types';
+import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel, SolveMode } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
 import { parseGrid, addPadding } from '../engine/PuzzleNotation';
+import { solveFromHere, SolveFromHereResult } from '../engine/DifficultySimulator';
 import { colors } from '../theme';
 
 interface GameScreenProps {
@@ -35,9 +36,22 @@ export function GameScreen({
     return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
   });
   const [hintLevel, setHintLevel] = useState<HintLevel>('count');
+  const [solveMode, setSolveMode] = useState<SolveMode>('off');
+  const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
 
   const cycleHintLevel = () => {
     setHintLevel(prev => (prev === 'off' ? 'count' : prev === 'count' ? 'example' : 'off'));
+  };
+
+  const toggleSolveMode = () => {
+    if (solveMode === 'off') {
+      const result = solveFromHere(grid, 1000);
+      setSolveResult(result);
+      setSolveMode('solve');
+    } else {
+      setSolveResult(null);
+      setSolveMode('off');
+    }
   };
 
   const handleGridChange = (newGrid: GridType) => {
@@ -63,6 +77,7 @@ export function GameScreen({
         onGridChange={handleGridChange}
         onRowValidated={handleRowValidated}
         hintLevel={hintLevel}
+        solveOverlay={solveResult}
       />
       
       <SafeAreaView style={styles.floatingHeader} pointerEvents="box-none">
@@ -88,6 +103,14 @@ export function GameScreen({
             >
               <Text style={[styles.hintLabel, hintLevel !== 'off' && styles.hintLabelActive]}>
                 {hintLevel === 'off' ? 'OFF' : hintLevel === 'count' ? '#' : 'Ex'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={toggleSolveMode}
+            >
+              <Text style={[styles.hintLabel, solveMode === 'solve' && styles.hintLabelActive]}>
+                {solveMode === 'off' ? 'OFF' : 'SLV'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -132,6 +155,8 @@ const styles = StyleSheet.create({
   rightSection: {
     position: 'absolute',
     right: 0,
+    flexDirection: 'row',
+    gap: 8,
   },
   backButton: {
     width: 44,

@@ -172,3 +172,72 @@ function fillRow(grid: Grid, info: RowInfo, word: string): void {
     cell.state = 'filled';
   }
 }
+
+// --- Solve-from-here (debug) ---
+
+export interface SolveFromHereResult {
+  successRate: number;
+  solution: Grid | null;
+}
+
+/**
+ * Like getRowInfo but treats any row where every accessible cell already has a
+ * letter (player-filled or fixed) as "allFixed", so the solver skips it.
+ */
+function getRowInfoForSolve(grid: Grid): RowInfo[] {
+  const rows: RowInfo[] = [];
+  for (let row = 0; row < grid.rows; row++) {
+    const accessibleCols: number[] = [];
+    for (let col = 0; col < grid.cols; col++) {
+      if (grid.cells[row][col].accessible) {
+        accessibleCols.push(col);
+      }
+    }
+    if (accessibleCols.length === 0) continue;
+
+    const allFixed = accessibleCols.every(c => {
+      const cell = grid.cells[row][c];
+      return cell.fixed || (cell.letter !== null && cell.letter !== '');
+    });
+    rows.push({ row, accessibleCols, wordLength: accessibleCols.length, allFixed });
+  }
+  return rows;
+}
+
+function simulateTrialFromHere(originalGrid: Grid): Grid | null {
+  const grid = cloneGrid(originalGrid);
+  const rowInfos = getRowInfoForSolve(grid);
+
+  const usedWords = new Set<string>();
+  for (const info of rowInfos) {
+    if (info.allFixed) {
+      usedWords.add(getWordFromCols(grid, info.row, info.accessibleCols).toLowerCase());
+    }
+  }
+
+  for (const info of rowInfos) {
+    if (info.allFixed) continue;
+
+    const candidates = getCandidatesForRow(grid, info, usedWords);
+    if (candidates.length === 0) return null;
+
+    const word = candidates[Math.floor(Math.random() * candidates.length)];
+    fillRow(grid, info, word);
+    usedWords.add(word.toLowerCase());
+  }
+
+  return grid;
+}
+
+export function solveFromHere(grid: Grid, trials: number = 1000): SolveFromHereResult {
+  const successfulGrids: Grid[] = [];
+  for (let i = 0; i < trials; i++) {
+    const result = simulateTrialFromHere(grid);
+    if (result) successfulGrids.push(result);
+  }
+  const successRate = successfulGrids.length / trials;
+  const solution = successfulGrids.length > 0
+    ? successfulGrids[Math.floor(Math.random() * successfulGrids.length)]
+    : null;
+  return { successRate, solution };
+}
