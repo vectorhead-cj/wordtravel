@@ -1,0 +1,3 @@
+wordfreq
+nbstripout
+jupyterlab

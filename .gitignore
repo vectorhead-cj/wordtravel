@@ -65,6 +65,9 @@ WordTravel/.metro-health-check*
 # testing
 WordTravel/coverage
 
+# Dictionary generator venv
+dictionary-generator/venv/
+
 # Yarn
 WordTravel/.yarn/*
 !WordTravel/.yarn/patches
