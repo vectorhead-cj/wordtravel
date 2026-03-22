@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel, SolveMode } from '../engine/types';
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
@@ -38,6 +37,7 @@ export function GameScreen({
   const [hintLevel, setHintLevel] = useState<HintLevel>('count');
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
+  const [headerBarHeight, setHeaderBarHeight] = useState(56);
 
   const cycleHintLevel = () => {
     setHintLevel(prev => (prev === 'off' ? 'count' : prev === 'count' ? 'example' : 'off'));
@@ -78,54 +78,53 @@ export function GameScreen({
         onRowValidated={handleRowValidated}
         hintLevel={hintLevel}
         solveOverlay={solveResult}
+        scrollContentTopInset={headerBarHeight}
       />
-      
-      <SafeAreaView style={styles.floatingHeader} pointerEvents="box-none">
+
+      <View
+        style={styles.headerBar}
+        pointerEvents="box-none"
+        onLayout={(e) => setHeaderBarHeight(e.nativeEvent.layout.height)}
+      >
         <View style={styles.headerRow}>
-          <View style={styles.leftSection}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <View style={styles.headerSide}>
+            <TouchableOpacity style={styles.headerButton} onPress={onBack} hitSlop={8}>
               <Text style={styles.backArrow}>←</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.centerSection}>
-            <View style={styles.modePill}>
-              <Text style={styles.modeText} numberOfLines={1}>
-                {mode === 'action' ? 'Action Mode' : `Puzzle - ${puzzleType.charAt(0).toUpperCase() + puzzleType.slice(1)}`}
-              </Text>
-            </View>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.modeText} numberOfLines={1}>
+              {mode === 'action'
+                ? 'Action Mode'
+                : `Puzzle - ${puzzleType.charAt(0).toUpperCase() + puzzleType.slice(1)}`}
+            </Text>
           </View>
-          
-          <View style={styles.rightSection}>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={cycleHintLevel}
-            >
+
+          <View style={[styles.headerSide, styles.headerSideEnd]}>
+            <TouchableOpacity style={styles.headerButton} onPress={cycleHintLevel} hitSlop={8}>
               <Text style={[styles.hintLabel, hintLevel !== 'off' && styles.hintLabelActive]}>
                 {hintLevel === 'off' ? 'OFF' : hintLevel === 'count' ? '#' : 'Ex'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={toggleSolveMode}
-            >
+            <TouchableOpacity style={styles.headerButton} onPress={toggleSolveMode} hitSlop={8}>
               <Text style={[styles.hintLabel, solveMode === 'solve' && styles.hintLabelActive]}>
                 {solveMode === 'off' ? 'OFF' : 'SLV'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
 
-const floatingShadow = {
+const barShadow = {
   shadowColor: colors.shadow,
   shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
-  elevation: 5,
+  shadowOpacity: 0.12,
+  shadowRadius: 3,
+  elevation: 4,
 };
 
 const styles = StyleSheet.create({
@@ -133,39 +132,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  floatingHeader: {
+  headerBar: {
     position: 'absolute',
-    top: 10,
-    left: 16,
-    right: 16,
-    paddingTop: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#4A4A4A',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    ...barShadow,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 44,
   },
-  leftSection: {
-    position: 'absolute',
-    left: 0,
-  },
-  centerSection: {
-    flexShrink: 0,
-  },
-  rightSection: {
-    position: 'absolute',
-    right: 0,
+  headerSide: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    minWidth: 0,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
+  headerSideEnd: {
+    justifyContent: 'flex-end',
+    gap: 4,
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+    minWidth: 0,
+    paddingHorizontal: 4,
+  },
+  headerButton: {
+    minWidth: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    ...floatingShadow,
   },
   backArrow: {
     fontSize: 24,
@@ -180,21 +185,11 @@ const styles = StyleSheet.create({
   hintLabelActive: {
     color: colors.accent,
   },
-  modePill: {
-    height: 44,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    borderRadius: 100,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    ...floatingShadow,
-  },
   modeText: {
     fontSize: 16,
     color: colors.textPrimary,
     fontWeight: '600',
-    flexShrink: 0,
+    textAlign: 'center',
   },
 });
 

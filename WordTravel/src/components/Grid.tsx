@@ -23,9 +23,18 @@ interface GridProps {
   onRowValidated: (row: number, isValid: boolean) => void;
   hintLevel: HintLevel;
   solveOverlay?: SolveFromHereResult | null;
+  scrollContentTopInset?: number;
 }
 
-export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel, solveOverlay }: GridProps) {
+export function Grid({
+  grid,
+  mode,
+  onGridChange,
+  onRowValidated,
+  hintLevel,
+  solveOverlay,
+  scrollContentTopInset = 0,
+}: GridProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
 
@@ -94,7 +103,10 @@ export function Grid({ grid, mode, onGridChange, onRowValidated, hintLevel, solv
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            scrollContentTopInset > 0 && { paddingTop: scrollContentTopInset },
+          ]}
           showsVerticalScrollIndicator={true}
         >
           <View style={{ width: cellSize * grid.cols, height: cellSize * grid.rows }}>
