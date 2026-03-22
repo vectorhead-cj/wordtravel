@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   solveStatContainer: {
     position: 'absolute',
-    bottom: 40,
+    top: 120,
     left: 0,
     right: 0,
     alignItems: 'center',

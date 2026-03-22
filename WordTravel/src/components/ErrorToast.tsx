@@ -19,7 +19,7 @@ export function ErrorToast({ message }: ErrorToastProps) {
 const styles = StyleSheet.create({
   errorPopup: {
     position: 'absolute',
-    bottom: 100,
+    top: 120,
     alignSelf: 'center',
     backgroundColor: colors.errorPopup,
     paddingHorizontal: 20,
