@@ -18,6 +18,7 @@ interface DictionaryOptions {
 class Dictionary {
   private wordSets: Map<number, Set<string>>;
   private wordArrays: Map<number, string[]>;
+  private wordFrequencies: Map<string, number>;
   // Key: "length:position:letter" → words matching that constraint
   private positionIndex: Map<string, string[]>;
   // Key: "length:letter" → words containing that letter (any position)
@@ -28,6 +29,7 @@ class Dictionary {
   constructor(options: DictionaryOptions = {}) {
     this.wordSets = new Map();
     this.wordArrays = new Map();
+    this.wordFrequencies = new Map();
     this.positionIndex = new Map();
     this.letterIndex = new Map();
     this.options = options;
@@ -53,11 +55,15 @@ class Dictionary {
       .flatMap(line => {
         const [word, freqStr] = line.trim().split('\t');
         if (!word || word.length !== length) return [];
+        const freq = parseFloat(freqStr);
         if (minFrequency !== undefined) {
-          const freq = parseFloat(freqStr);
           if (isNaN(freq) || freq < minFrequency) return [];
         }
-        return [word.toLowerCase()];
+        const normalized = word.toLowerCase();
+        if (!isNaN(freq)) {
+          this.wordFrequencies.set(normalized, freq);
+        }
+        return [normalized];
       });
 
     this.wordSets.set(length, new Set(words));
@@ -107,6 +113,10 @@ class Dictionary {
       total += wordSet.size;
     }
     return total;
+  }
+
+  getWordFrequency(word: string): number | null {
+    return this.wordFrequencies.get(word.toLowerCase()) ?? null;
   }
 
   getWordsOfLength(length: number): string[] {

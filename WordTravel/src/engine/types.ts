@@ -88,5 +88,9 @@ export interface GameResult {
   success: boolean;
   score: number;
   timeElapsed?: number;
+  uniqueLetterCount?: number;
+  difficulty?: Difficulty;
+  successRate?: number;
+  averageWordFrequency?: number;
 }
 
