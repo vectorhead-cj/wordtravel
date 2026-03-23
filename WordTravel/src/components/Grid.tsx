@@ -1,19 +1,12 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Pressable,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
 import { countValidNextWords, getValidNextWords } from '../engine/HintEngine';
 import { colors, layout } from '../theme';
 import { CellView } from './CellView';
 import { ErrorToast } from './ErrorToast';
+import { CustomKeyboard } from './CustomKeyboard';
 import { useGridInput } from '../hooks/useGridInput';
 
 interface GridProps {
@@ -36,7 +29,6 @@ export function Grid({
   scrollContentTopInset = 0,
 }: GridProps) {
   const scrollViewRef = useRef<ScrollView>(null);
-  const textInputRef = useRef<TextInput>(null);
 
   const { currentPosition, errorMessage, validationFailed, handleKeyPress, handleBackspace } = useGridInput({
     grid,
@@ -72,10 +64,6 @@ export function Grid({
   }, []);
 
   useEffect(() => {
-    textInputRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
     if (!currentPosition || validationFailed) return;
     const screenHeight = Dimensions.get('window').height;
     const rowYPosition = currentPosition.row * cellSize;
@@ -99,45 +87,44 @@ export function Grid({
 
   return (
     <View style={styles.container}>
-      <Pressable style={{ flex: 1 }} onPress={() => textInputRef.current?.focus()}>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            scrollContentTopInset > 0 && { paddingTop: scrollContentTopInset },
-          ]}
-          showsVerticalScrollIndicator={true}
-        >
-          <View style={{ width: cellSize * grid.cols, height: cellSize * grid.rows }}>
-            {grid.cells.map((row, rowIndex) => (
-              <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
-                {row.map((cell, colIndex) => {
-                  const showBadge = colIndex === badgeColumns[rowIndex];
-                  const hintData = showBadge ? hintDataPerRow[rowIndex] : null;
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          scrollContentTopInset > 0 && { paddingTop: scrollContentTopInset },
+        ]}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ width: cellSize * grid.cols, height: cellSize * grid.rows }}>
+          {grid.cells.map((row, rowIndex) => (
+            <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
+              {row.map((cell, colIndex) => {
+                const showBadge = colIndex === badgeColumns[rowIndex];
+                const hintData = showBadge ? hintDataPerRow[rowIndex] : null;
 
-                  const solvedCell = solveOverlay?.solution?.cells[rowIndex]?.[colIndex];
-                  const ghostLetter = solvedCell?.letter && !cell.letter
-                    ? solvedCell.letter
-                    : undefined;
+                const solvedCell = solveOverlay?.solution?.cells[rowIndex]?.[colIndex];
+                const ghostLetter = solvedCell?.letter && !cell.letter
+                  ? solvedCell.letter
+                  : undefined;
 
-                  return (
-                    <CellView
-                      key={`${rowIndex}-${colIndex}`}
-                      cell={cell}
-                      cellSize={cellSize}
-                      tileSize={tileSize}
-                      badgeCount={hintData?.count ?? null}
-                      badgeExamples={hintData?.examples}
-                      ghostLetter={ghostLetter}
-                    />
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      </Pressable>
+                return (
+                  <CellView
+                    key={`${rowIndex}-${colIndex}`}
+                    cell={cell}
+                    cellSize={cellSize}
+                    tileSize={tileSize}
+                    badgeCount={hintData?.count ?? null}
+                    badgeExamples={hintData?.examples}
+                    ghostLetter={ghostLetter}
+                  />
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
 
       {solveOverlay && (
         <View style={styles.solveStatContainer}>
@@ -152,19 +139,23 @@ export function Grid({
 
       <ErrorToast message={errorMessage} />
 
+      <CustomKeyboard onKey={letter => handleKeyPress(letter)} onBackspace={handleBackspace} />
+
       <TextInput
-        ref={textInputRef}
-        style={styles.hiddenInput}
+        style={styles.hardwareInput}
+        value=""
         onChangeText={handleKeyPress}
-        onKeyPress={(e) => {
+        onKeyPress={e => {
           if (e.nativeEvent.key === 'Backspace') {
             handleBackspace();
           }
         }}
-        value=""
+        showSoftInputOnFocus={false}
+        autoFocus
         autoCapitalize="characters"
         autoCorrect={false}
-        keyboardType="default"
+        keyboardType="ascii-capable"
+        importantForAutofill="no"
       />
     </View>
   );
@@ -178,18 +169,20 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  hardwareInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+    left: 0,
+    bottom: 0,
+  },
   scrollContent: {
     alignItems: 'center',
+    paddingBottom: 8,
   },
   row: {
     flexDirection: 'row',
-  },
-  hiddenInput: {
-    position: 'absolute',
-    top: -1000,
-    left: 0,
-    width: 1,
-    height: 1,
   },
   solveStatContainer: {
     position: 'absolute',

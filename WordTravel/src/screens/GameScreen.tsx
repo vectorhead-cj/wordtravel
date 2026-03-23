@@ -24,7 +24,7 @@ export function GameScreen({
   difficulty = 'easy',
   onGameComplete, 
   onBack,
-  paddingRowsTop = 3,
+  paddingRowsTop = 0,
   paddingRowsBottom = 10,
 }: GameScreenProps) {
   const [grid, setGrid] = useState<GridType>(() => {
