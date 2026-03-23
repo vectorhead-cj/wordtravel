@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
@@ -19,6 +19,9 @@ interface GridProps {
   scrollContentTopInset?: number;
 }
 
+const PUZZLE_GRID_PADDING = 8;
+const HINT_AREA_WIDTH = 56;
+
 export function Grid({
   grid,
   mode,
@@ -29,6 +32,7 @@ export function Grid({
   scrollContentTopInset = 0,
 }: GridProps) {
   const scrollViewRef = useRef<ScrollView>(null);
+  const [gridAreaLayout, setGridAreaLayout] = useState<{ width: number; height: number } | null>(null);
 
   const { currentPosition, errorMessage, validationFailed, handleKeyPress, handleBackspace } = useGridInput({
     grid,
@@ -56,75 +60,130 @@ export function Grid({
     });
   }, [grid, hintLevel]);
 
+  const activeBounds = useMemo(() => {
+    let minRow = grid.rows, maxRow = -1, minCol = grid.cols, maxCol = -1;
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        if (grid.cells[r][c].accessible) {
+          minRow = Math.min(minRow, r);
+          maxRow = Math.max(maxRow, r);
+          minCol = Math.min(minCol, c);
+          maxCol = Math.max(maxCol, c);
+        }
+      }
+    }
+    if (maxRow < 0) {
+      return { minRow: 0, maxRow: 0, minCol: 0, maxCol: 0, activeRows: 0, activeCols: 0 };
+    }
+    return {
+      minRow, maxRow, minCol, maxCol,
+      activeRows: maxRow - minRow + 1,
+      activeCols: maxCol - minCol + 1,
+    };
+  }, [grid]);
+
   const { cellSize, tileSize } = useMemo(() => {
-    const screenWidth = Dimensions.get('window').width;
-    const cell = Math.floor(screenWidth / layout.visibleColumns);
-    const tile = cell - layout.tileSpacing;
-    return { cellSize: cell, tileSize: tile };
-  }, []);
+    let cell: number;
+    if (mode === 'puzzle' && gridAreaLayout && activeBounds.activeCols > 0) {
+      const availWidth = gridAreaLayout.width - PUZZLE_GRID_PADDING * 2 - HINT_AREA_WIDTH;
+      const availHeight = gridAreaLayout.height - PUZZLE_GRID_PADDING * 2;
+      cell = Math.floor(Math.min(
+        availWidth / activeBounds.activeCols,
+        availHeight / activeBounds.activeRows,
+      ));
+    } else {
+      const screenWidth = Dimensions.get('window').width;
+      cell = Math.floor(screenWidth / layout.visibleColumns);
+    }
+    return { cellSize: cell, tileSize: cell - layout.tileSpacing };
+  }, [mode, gridAreaLayout, activeBounds]);
 
   useEffect(() => {
-    if (!currentPosition || validationFailed) return;
+    if (mode === 'puzzle' || !currentPosition || validationFailed) return;
     const screenHeight = Dimensions.get('window').height;
-    const rowYPosition = currentPosition.row * cellSize;
+    const rowYPosition = (currentPosition.row - activeBounds.minRow) * cellSize;
     const screenMiddle = screenHeight * 0.5;
 
     if (rowYPosition > screenMiddle) {
       const targetY = rowYPosition - screenHeight * 0.45;
       scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
     }
-  }, [currentPosition, cellSize, validationFailed]);
+  }, [mode, currentPosition, cellSize, validationFailed, activeBounds.minRow]);
 
-  const badgeColumns = useMemo(() => {
-    return grid.cells.map(row => {
-      let lastAccessible = -1;
-      for (let col = 0; col < row.length; col++) {
-        if (row[col].accessible) lastAccessible = col;
-      }
-      return lastAccessible + 1 < grid.cols ? lastAccessible + 1 : -1;
-    });
-  }, [grid]);
+  const renderGridContent = () => {
+    const { minRow, maxRow, minCol, activeCols } = activeBounds;
+
+    return (
+      <View>
+        {grid.cells.slice(minRow, maxRow + 1).map((row, i) => {
+          const rowIndex = minRow + i;
+          const hintData = hintDataPerRow[rowIndex];
+
+          return (
+            <View key={rowIndex} style={styles.gridRow}>
+              <View style={[styles.cellsRow, { width: cellSize * activeCols }]}>
+                {row.slice(minCol, minCol + activeCols).map((cell, j) => {
+                  const colIndex = minCol + j;
+                  const solvedCell = solveOverlay?.solution?.cells[rowIndex]?.[colIndex];
+                  const ghostLetter = solvedCell?.letter && !cell.letter
+                    ? solvedCell.letter
+                    : undefined;
+
+                  return (
+                    <CellView
+                      key={`${rowIndex}-${colIndex}`}
+                      cell={cell}
+                      cellSize={cellSize}
+                      tileSize={tileSize}
+                      ghostLetter={ghostLetter}
+                    />
+                  );
+                })}
+              </View>
+              {hintData?.count != null && (
+                <View style={styles.rowHint}>
+                  <Text style={styles.hintCount}>{hintData.count}</Text>
+                  {hintData.examples?.map((word, idx) => (
+                    <Text key={idx} style={styles.hintExample} numberOfLines={1}>{word}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          scrollContentTopInset > 0 && { paddingTop: scrollContentTopInset },
-        ]}
-        showsVerticalScrollIndicator={true}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={{ width: cellSize * grid.cols, height: cellSize * grid.rows }}>
-          {grid.cells.map((row, rowIndex) => (
-            <View key={rowIndex} style={[styles.row, { width: cellSize * grid.cols }]}>
-              {row.map((cell, colIndex) => {
-                const showBadge = colIndex === badgeColumns[rowIndex];
-                const hintData = showBadge ? hintDataPerRow[rowIndex] : null;
-
-                const solvedCell = solveOverlay?.solution?.cells[rowIndex]?.[colIndex];
-                const ghostLetter = solvedCell?.letter && !cell.letter
-                  ? solvedCell.letter
-                  : undefined;
-
-                return (
-                  <CellView
-                    key={`${rowIndex}-${colIndex}`}
-                    cell={cell}
-                    cellSize={cellSize}
-                    tileSize={tileSize}
-                    badgeCount={hintData?.count ?? null}
-                    badgeExamples={hintData?.examples}
-                    ghostLetter={ghostLetter}
-                  />
-                );
-              })}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+      {mode === 'puzzle' ? (
+        <>
+          {scrollContentTopInset > 0 && <View style={{ height: scrollContentTopInset }} />}
+          <View
+            style={styles.puzzleArea}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              setGridAreaLayout({ width, height });
+            }}
+          >
+            {gridAreaLayout && renderGridContent()}
+          </View>
+        </>
+      ) : (
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            scrollContentTopInset > 0 && { paddingTop: scrollContentTopInset },
+          ]}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderGridContent()}
+        </ScrollView>
+      )}
 
       {solveOverlay && (
         <View style={styles.solveStatContainer}>
@@ -169,6 +228,11 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  puzzleArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   hardwareInput: {
     position: 'absolute',
     width: 1,
@@ -181,8 +245,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 8,
   },
-  row: {
+  gridRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cellsRow: {
+    flexDirection: 'row',
+  },
+  rowHint: {
+    paddingLeft: 6,
+    justifyContent: 'center',
+  },
+  hintCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.ruleIndicatorNeutral,
+  },
+  hintExample: {
+    fontSize: 9,
+    color: colors.textMuted,
   },
   solveStatContainer: {
     position: 'absolute',

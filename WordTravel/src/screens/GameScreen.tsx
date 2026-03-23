@@ -4,7 +4,7 @@ import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLev
 import { Grid } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator } from '../engine/PuzzleGenerator';
-import { parseGrid, addPadding } from '../engine/PuzzleNotation';
+import { parseGrid } from '../engine/PuzzleNotation';
 import { solveFromHere, SolveFromHereResult } from '../engine/DifficultySimulator';
 import { colors } from '../theme';
 
@@ -14,8 +14,6 @@ interface GameScreenProps {
   difficulty?: Difficulty;
   onGameComplete: (result: GameResult) => void;
   onBack: () => void;
-  paddingRowsTop?: number;
-  paddingRowsBottom?: number;
 }
 
 export function GameScreen({ 
@@ -24,15 +22,13 @@ export function GameScreen({
   difficulty = 'easy',
   onGameComplete, 
   onBack,
-  paddingRowsTop = 0,
-  paddingRowsBottom = 10,
 }: GameScreenProps) {
   const [grid, setGrid] = useState<GridType>(() => {
     if (mode === 'puzzle') {
       const { puzzle } = puzzleGenerator.generatePuzzle(puzzleType, difficulty);
-      return addPadding(parseGrid(puzzle), paddingRowsTop, paddingRowsBottom);
+      return parseGrid(puzzle);
     }
-    return createMockGrid(mode, paddingRowsTop, paddingRowsBottom);
+    return createMockGrid(mode, 0, 0);
   });
   const [hintLevel, setHintLevel] = useState<HintLevel>('count');
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
