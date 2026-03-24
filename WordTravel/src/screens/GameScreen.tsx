@@ -1,13 +1,14 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel, SolveMode } from '../engine/types';
-import { Grid } from '../components/Grid';
+import { Grid, GridHandle } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator, GeneratedPuzzle } from '../engine/PuzzleGenerator';
 import { parseGrid } from '../engine/PuzzleNotation';
 import { solveFromHere, SolveFromHereResult } from '../engine/DifficultySimulator';
 import { getWordFromRow } from '../engine/GameLogic';
 import { playerDictionary } from '../engine/Dictionary';
+import { AutoSolver } from '../engine/AutoSolver';
 import { colors } from '../theme';
 
 interface GameScreenProps {
@@ -37,11 +38,17 @@ export function GameScreen({
     }
     return createMockGrid(mode, 0, 0);
   });
+  const gridRef = useRef<GridHandle>(null);
+  const autoSolverRef = useRef<AutoSolver | null>(null);
   const startTime = useRef(Date.now());
   const [hintLevel, setHintLevel] = useState<HintLevel>('count');
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
   const [headerBarHeight, setHeaderBarHeight] = useState(56);
+
+  useEffect(() => {
+    return () => autoSolverRef.current?.stop();
+  }, []);
 
   const cycleHintLevel = () => {
     setHintLevel(prev => (prev === 'off' ? 'count' : prev === 'count' ? 'example' : 'off'));
@@ -56,6 +63,15 @@ export function GameScreen({
       setSolveResult(null);
       setSolveMode('off');
     }
+  };
+
+  const handleAutoSolve = () => {
+    autoSolverRef.current?.stop();
+    const solver = new AutoSolver((letter) => {
+      gridRef.current?.injectKey(letter);
+    });
+    autoSolverRef.current = solver;
+    solver.start(grid);
   };
 
   const handleGridChange = (newGrid: GridType) => {
@@ -144,6 +160,7 @@ export function GameScreen({
   return (
     <View style={styles.container}>
       <Grid
+        ref={gridRef}
         grid={grid}
         mode={mode}
         onGridChange={handleGridChange}
@@ -169,7 +186,7 @@ export function GameScreen({
             <Text style={styles.modeText} numberOfLines={1}>
               {mode === 'action'
                 ? 'Action Mode'
-                : `Puzzle - ${puzzleType.charAt(0).toUpperCase() + puzzleType.slice(1)}`}
+                : `Puzzle - ${puzzleType.charAt(0).toUpperCase() + puzzleType.slice(1)} (${difficulty})`}
             </Text>
           </View>
 
@@ -183,6 +200,9 @@ export function GameScreen({
               <Text style={[styles.hintLabel, solveMode === 'solve' && styles.hintLabelActive]}>
                 {solveMode === 'off' ? 'OFF' : 'SLV'}
               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerButton} onPress={handleAutoSolve} hitSlop={8}>
+              <Text style={styles.hintLabel}>END</Text>
             </TouchableOpacity>
           </View>
         </View>

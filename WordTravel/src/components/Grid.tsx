@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
@@ -19,10 +19,14 @@ interface GridProps {
   scrollContentTopInset?: number;
 }
 
+export interface GridHandle {
+  injectKey: (letter: string) => void;
+}
+
 const PUZZLE_GRID_PADDING = 8;
 const HINT_AREA_WIDTH = 56;
 
-export function Grid({
+export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   grid,
   mode,
   onGridChange,
@@ -30,7 +34,7 @@ export function Grid({
   hintLevel,
   solveOverlay,
   scrollContentTopInset = 0,
-}: GridProps) {
+}, ref) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [gridAreaLayout, setGridAreaLayout] = useState<{ width: number; height: number } | null>(null);
 
@@ -40,6 +44,13 @@ export function Grid({
     onGridChange,
     onRowValidated,
   });
+
+  const handleKeyPressRef = useRef(handleKeyPress);
+  handleKeyPressRef.current = handleKeyPress;
+
+  useImperativeHandle(ref, () => ({
+    injectKey: (letter: string) => handleKeyPressRef.current(letter),
+  }));
 
   const hintDataPerRow = useMemo(() => {
     if (hintLevel === 'off') {
@@ -218,7 +229,7 @@ export function Grid({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
