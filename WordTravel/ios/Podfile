@@ -30,5 +30,30 @@ target 'WordTravel' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 26's Clang rejects consteval in the bundled fmt library.
+    # Patch base.h so a prior #define FMT_USE_CONSTEVAL is honoured,
+    # then set FMT_USE_CONSTEVAL=0 via the prefix header.
+    base_h = File.join(__dir__, 'Pods', 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(base_h)
+      text = File.read(base_h)
+      needle = '#if !defined(__cpp_lib_is_constant_evaluated)'
+      guard  = "#ifndef FMT_USE_CONSTEVAL\n#{needle}"
+      unless text.include?('#ifndef FMT_USE_CONSTEVAL')
+        text.gsub!(needle, guard)
+        text.gsub!("#endif\n#if FMT_USE_CONSTEVAL",
+                    "#endif\n#endif\n#if FMT_USE_CONSTEVAL")
+        File.chmod(0644, base_h)
+        File.write(base_h, text)
+      end
+    end
+
+    pch = File.join(__dir__, 'Pods', 'Target Support Files', 'fmt', 'fmt-prefix.pch')
+    if File.exist?(pch)
+      text = File.read(pch)
+      unless text.include?('FMT_USE_CONSTEVAL')
+        File.write(pch, "#define FMT_USE_CONSTEVAL 0\n#{text}")
+      end
+    end
   end
 end
