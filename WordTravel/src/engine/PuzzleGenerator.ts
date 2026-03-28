@@ -1,5 +1,5 @@
 import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, Difficulty, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
-import { PUZZLE_CONFIG } from './config';
+import { PUZZLE_CONFIG, GENERATION_PROFILES, GenerationProfile } from './config';
 import { generatorDictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
 import { simulatePuzzleDifficulty } from './DifficultySimulator';
@@ -14,7 +14,7 @@ export class PuzzleGenerator {
   generatePuzzle(puzzleType: PuzzleType = 'open', targetDifficulty?: Difficulty): GeneratedPuzzle {
     while (true) {
       const config = this.generatePuzzleConfig(0, 0, puzzleType);
-      const grid = this.createGridFromConfig(config, puzzleType);
+      const grid = this.createGridFromConfig(config, puzzleType, targetDifficulty);
 
       if (!this.isGridValid(grid)) continue;
 
@@ -64,7 +64,8 @@ export class PuzzleGenerator {
     };
   }
   
-  createGridFromConfig(config: PuzzleConfig, puzzleType: PuzzleType = 'open'): Grid {
+  createGridFromConfig(config: PuzzleConfig, puzzleType: PuzzleType = 'open', difficulty: Difficulty = 'medium'): Grid {
+    const profile = GENERATION_PROFILES[difficulty];
     const cells: Cell[][] = [];
     
     for (let row = 0; row < config.rows; row++) {
@@ -91,17 +92,17 @@ export class PuzzleGenerator {
     };
     
     this.prefillFixedWords(grid, config, puzzleType);
-    this.placeFixedLetterTiles(grid, config);
-    this.placeHardMatchTiles(grid, config);
-    this.placeSoftMatchTiles(grid, config);
-    this.placeForbiddenMatchTiles(grid, config);
-    this.ensureMinimumRuleTiles(grid, config);
+    this.placeFixedLetterTiles(grid, profile);
+    this.placeHardMatchTiles(grid, config, profile);
+    this.placeSoftMatchTiles(grid, config, profile);
+    this.placeForbiddenMatchTiles(grid, config, profile);
+    this.ensureMinimumRuleTiles(grid, config, profile);
     
     return grid;
   }
   
-  private placeFixedLetterTiles(grid: Grid, _config: PuzzleConfig): void {
-    const target = PUZZLE_CONFIG.FIXED_TILES_PER_PUZZLE;
+  private placeFixedLetterTiles(grid: Grid, profile: GenerationProfile): void {
+    const target = profile.fixedTiles;
     const candidates: { row: number; col: number }[] = [];
 
     for (let row = 0; row < grid.rows; row++) {
@@ -136,8 +137,8 @@ export class PuzzleGenerator {
     }
   }
 
-  private placeHardMatchTiles(grid: Grid, config: PuzzleConfig): void {
-    const targetPairs = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
+  private placeHardMatchTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+    const targetPairs = profile.hardMatchPairs;
     let placedPairs = 0;
     const maxAttempts = 100;
     let attempts = 0;
@@ -181,8 +182,8 @@ export class PuzzleGenerator {
     }
   }
   
-  private placeSoftMatchTiles(grid: Grid, config: PuzzleConfig): void {
-    const targetTiles = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.5);
+  private placeSoftMatchTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+    const targetTiles = profile.softMatchTiles;
     let placedTiles = 0;
     const maxAttempts = 100;
     let attempts = 0;
@@ -210,8 +211,8 @@ export class PuzzleGenerator {
     }
   }
   
-  private placeForbiddenMatchTiles(grid: Grid, config: PuzzleConfig): void {
-    const targetTiles = Math.round(PUZZLE_CONFIG.WORD_ROWS * 0.3);
+  private placeForbiddenMatchTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+    const targetTiles = profile.forbiddenTiles;
     let placedTiles = 0;
     const maxAttempts = 100;
     let attempts = 0;
@@ -257,8 +258,8 @@ export class PuzzleGenerator {
     return count;
   }
 
-  private ensureMinimumRuleTiles(grid: Grid, config: PuzzleConfig): void {
-    const min = PUZZLE_CONFIG.MIN_RULE_TILES_PER_WORD;
+  private ensureMinimumRuleTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+    const min = profile.minRuleTilesPerWord;
     if (min <= 0) return;
 
     for (const slot of config.wordSlots) {

@@ -105,7 +105,7 @@ export function GameScreen({
   const autoSolverRef = useRef<AutoSolver | null>(null);
   const startTime = useRef(Date.now());
   const backspaceCountRef = useRef(0);
-  const [hintLevel, setHintLevel] = useState<HintLevel>('count');
+  const [hintLevel, setHintLevel] = useState<HintLevel>('off');
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
   const [headerBarHeight, setHeaderBarHeight] = useState(56);
