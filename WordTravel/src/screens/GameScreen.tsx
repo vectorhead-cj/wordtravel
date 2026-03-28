@@ -17,7 +17,7 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 // Fixed overlay spacing — every gap between sections is the same.
 const SECTION_GAP = 70;
 const TITLE_BLOCK_H = 50;   // "Puzzle Solved!" + badge row
-const STATS_BLOCK_H = 120;  // 4 stat rows
+const STATS_BLOCK_H = 150;  // up to 5 stat rows
 const BUTTON_BLOCK_H = 40;  // button height
 
 interface GameScreenProps {
@@ -77,7 +77,7 @@ export function GameScreen({
     const fixedH = SECTION_GAP * 5 + TITLE_BLOCK_H + STATS_BLOCK_H + BUTTON_BLOCK_H;
     const puzzleSlotH = Math.max(100, containerH - fixedH);
 
-    const scale = Math.min(0.85, puzzleSlotH / puzzleViewH);
+    const scale = Math.min(1.1, 1.5 * puzzleSlotH / puzzleViewH);
     const slotCenter = SECTION_GAP + TITLE_BLOCK_H + SECTION_GAP + puzzleSlotH / 2;
     const translateY = slotCenter - puzzleViewH / 2;
 
@@ -104,6 +104,7 @@ export function GameScreen({
   const gridRef = useRef<GridHandle>(null);
   const autoSolverRef = useRef<AutoSolver | null>(null);
   const startTime = useRef(Date.now());
+  const backspaceCountRef = useRef(0);
   const [hintLevel, setHintLevel] = useState<HintLevel>('count');
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
@@ -153,6 +154,10 @@ export function GameScreen({
   const handleGridChange = (newGrid: GridType) => {
     setGrid(newGrid);
   };
+
+  const handleBackspaceApplied = useCallback(() => {
+    backspaceCountRef.current += 1;
+  }, []);
 
   const isPuzzleComplete = useCallback((g: GridType): boolean => {
     for (let row = 0; row < g.rows; row++) {
@@ -207,6 +212,7 @@ export function GameScreen({
       difficulty: puzzleMeta?.difficulty,
       successRate: puzzleMeta?.successRate,
       averageWordFrequency,
+      backspaceCount: backspaceCountRef.current,
     };
   }, [puzzleMeta]);
 
@@ -218,10 +224,13 @@ export function GameScreen({
     const easeOut = Easing.out(Easing.cubic);
     const easeInOut = Easing.inOut(Easing.cubic);
 
+    const headerHideY =
+      Math.max(headerBarHeight * 2, headerBarHeight + insets.top) + 40;
+
     Animated.parallel([
-      // Header slides up fully out of view (including shadow): 0–250 ms
+      // Past the transparent top gap of the results overlay; include insets + shadow bleed
       Animated.timing(headerTranslateY, {
-        toValue: -(headerBarHeight * 2),
+        toValue: -headerHideY,
         duration: 250,
         easing: easeOut,
         useNativeDriver: true,
@@ -298,6 +307,7 @@ export function GameScreen({
   }, [
     completionLayout,
     headerBarHeight,
+    insets.top,
     headerTranslateY, kbTranslateY,
     puzzleScaleAnim, puzzleTranslateYAnim,
     titleOpacity, titleScale,
@@ -339,6 +349,7 @@ export function GameScreen({
         readOnly={isCompleted}
         onGridChange={handleGridChange}
         onRowValidated={handleRowValidated}
+        onBackspaceApplied={handleBackspaceApplied}
         hintLevel={isCompleted ? 'off' : hintLevel}
         solveOverlay={isCompleted ? null : solveResult}
         scrollContentTopInset={headerBarHeight}
@@ -429,6 +440,9 @@ export function GameScreen({
               )}
               {completedResult.uniqueLetterCount != null && (
                 <StatRow label="Unique Letters" value={String(completedResult.uniqueLetterCount)} />
+              )}
+              {completedResult.backspaceCount != null && (
+                <StatRow label="Backspaces" value={String(completedResult.backspaceCount)} />
               )}
               {completedResult.successRate != null && (
                 <StatRow label="Solve Rate" value={formatSolveRate(completedResult.successRate)} />

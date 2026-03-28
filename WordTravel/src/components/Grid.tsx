@@ -17,6 +17,7 @@ interface GridProps {
   readOnly?: boolean;
   onGridChange: (grid: GridType) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
+  onBackspaceApplied?: () => void;
   hintLevel: HintLevel;
   solveOverlay?: SolveFromHereResult | null;
   scrollContentTopInset?: number;
@@ -48,6 +49,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   readOnly = false,
   onGridChange,
   onRowValidated,
+  onBackspaceApplied,
   hintLevel,
   solveOverlay,
   scrollContentTopInset = 0,
@@ -64,6 +66,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
     readOnly,
     onGridChange,
     onRowValidated,
+    onBackspaceApplied,
   });
 
   const handleKeyPressRef = useRef(handleKeyPress);

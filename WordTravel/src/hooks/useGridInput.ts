@@ -52,6 +52,7 @@ interface UseGridInputParams {
   readOnly?: boolean;
   onGridChange: (grid: Grid) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
+  onBackspaceApplied?: () => void;
 }
 
 export function useGridInput({
@@ -60,6 +61,7 @@ export function useGridInput({
   readOnly = false,
   onGridChange,
   onRowValidated,
+  onBackspaceApplied,
 }: UseGridInputParams) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationFailedRow, setValidationFailedRow] = useState<number | null>(null);
@@ -119,6 +121,7 @@ export function useGridInput({
       }
       setValidationFailedRow(null);
       onGridChange(newGrid);
+      onBackspaceApplied?.();
       return;
     }
 
@@ -129,7 +132,8 @@ export function useGridInput({
     newGrid.cells[target.row][target.col].state = 'empty';
 
     onGridChange(newGrid);
-  }, [readOnly, grid, mode, currentPosition, validationFailedRow, onGridChange]);
+    onBackspaceApplied?.();
+  }, [readOnly, grid, mode, currentPosition, validationFailedRow, onGridChange, onBackspaceApplied]);
 
   return {
     currentPosition,
