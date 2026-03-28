@@ -2,23 +2,28 @@ import React from 'react';
 import { View, TextInput, Text, StyleSheet } from 'react-native';
 import { Cell } from '../engine/types';
 import { colors, layout } from '../theme';
+import { ModifierOverlay } from './ModifierOverlay';
 
 interface CellViewProps {
   cell: Cell;
   cellSize: number;
   tileSize: number;
   ghostLetter?: string;
+  active?: boolean;
+  modifierColor?: string;
+  modifierRotation?: 0 | 180;
 }
 
-export function CellView({ cell, cellSize, tileSize, ghostLetter }: CellViewProps) {
+export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifierColor, modifierRotation }: CellViewProps) {
   if (!cell.accessible) {
     return <View style={{ width: cellSize, height: cellSize }} />;
   }
 
   const ruleTile = cell.ruleTile;
-  const showFilledCircle = ruleTile?.type === 'hardMatch' && ruleTile.constraint.position === 'top';
-  const showHollowCircle = ruleTile?.type === 'softMatch';
-  const showForbidden = ruleTile?.type === 'forbiddenMatch';
+  const showModifier =
+    ruleTile?.type === 'hardMatch' ||
+    ruleTile?.type === 'softMatch' ||
+    ruleTile?.type === 'forbiddenMatch';
 
   return (
     <View style={[styles.cellOuter, { width: cellSize, height: cellSize }]}>
@@ -26,7 +31,11 @@ export function CellView({ cell, cellSize, tileSize, ghostLetter }: CellViewProp
         styles.tile,
         { width: tileSize, height: tileSize, borderRadius: layout.tileCornerRadius },
         cell.fixed && { backgroundColor: colors.background },
+        active && { borderColor: colors.tileBorderActive },
       ]}>
+        {showModifier && ruleTile && modifierColor && (
+          <ModifierOverlay ruleType={ruleTile.type} color={modifierColor} rotation={modifierRotation ?? 0} />
+        )}
         <View style={styles.cellContent}>
           {cell.letter ? (
             <View style={styles.letterContainer}>
@@ -37,9 +46,6 @@ export function CellView({ cell, cellSize, tileSize, ghostLetter }: CellViewProp
               <Text style={styles.ghostLetter}>{ghostLetter}</Text>
             </View>
           ) : null}
-          {showFilledCircle && <Text style={styles.ruleIndicator}>●</Text>}
-          {showHollowCircle && <Text style={styles.ruleIndicator}>○</Text>}
-          {showForbidden && <Text style={styles.ruleIndicator}>−</Text>}
         </View>
       </View>
     </View>
@@ -57,6 +63,7 @@ const styles = StyleSheet.create({
     borderColor: colors.tileStroke,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   cellContent: {
     width: '100%',
@@ -82,13 +89,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     opacity: 0.5,
-  },
-  ruleIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: colors.ruleIndicatorNeutral,
   },
 });
 

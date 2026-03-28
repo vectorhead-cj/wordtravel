@@ -176,7 +176,7 @@ export class PuzzleGenerator {
       
       if (topCell.accessible && bottomCell.accessible && 
           !topCell.ruleTile && !bottomCell.ruleTile &&
-          !(topCell.fixed && bottomCell.fixed && topCell.letter !== bottomCell.letter)) {
+          !topCell.fixed && !bottomCell.fixed) {
         
         const topTile: HardMatchTile = {
           type: 'hardMatch',
@@ -295,7 +295,7 @@ export class PuzzleGenerator {
         if (slot.row + 1 < grid.rows) {
           const below = grid.cells[slot.row + 1][col];
           if (below.accessible && !below.ruleTile &&
-              !(cell.fixed && below.fixed && cell.letter !== below.letter)) {
+              !cell.fixed && !below.fixed) {
             cell.ruleTile = {
               type: 'hardMatch',
               constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
@@ -328,12 +328,8 @@ export class PuzzleGenerator {
         const cell = grid.cells[r][c];
         if (!cell.accessible || !cell.ruleTile) continue;
 
-        if (cell.ruleTile.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
-          const { pairedRow, pairedCol } = cell.ruleTile.constraint;
-          const paired = grid.cells[pairedRow]?.[pairedCol];
-          if (cell.fixed && paired?.fixed && cell.letter !== paired.letter) {
-            return false;
-          }
+        if (cell.ruleTile.type === 'hardMatch' && cell.fixed) {
+          return false;
         }
 
         if (cell.ruleTile.type === 'softMatch' && cell.fixed && cell.letter) {

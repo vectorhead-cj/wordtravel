@@ -241,6 +241,35 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
   };
 }
 
+export type RuleFulfillment = 'neutral' | 'fulfilled' | 'broken';
+
+export function computeRuleFulfillment(grid: Grid, row: number, col: number): RuleFulfillment {
+  const cell = grid.cells[row][col];
+  const rule = cell.ruleTile;
+  if (!rule) return 'neutral';
+
+  if (rule.type === 'hardMatch') {
+    const { pairedRow, pairedCol } = rule.constraint;
+    if (!isRowComplete(grid, row) || !isRowComplete(grid, pairedRow)) return 'neutral';
+    return cell.letter === grid.cells[pairedRow][pairedCol].letter ? 'fulfilled' : 'broken';
+  }
+
+  const targetRow = rule.constraint.nextRow;
+  if (!isRowComplete(grid, row) || !isRowComplete(grid, targetRow)) return 'neutral';
+
+  let letterFound = false;
+  for (let c = 0; c < grid.cols; c++) {
+    const target = grid.cells[targetRow][c];
+    if (target.accessible && target.letter === cell.letter) {
+      letterFound = true;
+      break;
+    }
+  }
+
+  if (rule.type === 'softMatch') return letterFound ? 'fulfilled' : 'broken';
+  return letterFound ? 'broken' : 'fulfilled';
+}
+
 export function validateAndUpdateRow(
   gridToValidate: Grid,
   row: number,

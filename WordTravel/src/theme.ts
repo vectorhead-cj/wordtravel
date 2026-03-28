@@ -1,5 +1,5 @@
 export const colors = {
-  background: '#E8DCC8',
+  background: '#e2dccb',
   surface: '#FFFFFF',
   accent: '#007AFF',
   shadow: '#000000',
@@ -9,18 +9,23 @@ export const colors = {
   textMuted: '#999999',
   textOnAccent: '#FFFFFF',
 
-  tile: '#F5F0E8',
+  tile: '#f5f2e5',
   tileStroke: '#FFFFFF',
   letterDefault: '#333333',
-  ruleIndicatorNeutral: '#888888',
+  ruleIndicatorNeutral: '#b8ae9c',
+  tileBorderActive: '#f0a040',
+  hardMatch: '#b8d4e8',
+  softMatch: '#a8d4b0',
+  forbidden: '#c77a7b',
+  ruleBroken: '#e83a3a',
 
   errorPopup: 'rgba(0, 0, 0, 0.75)',
   errorText: '#FFFFFF',
 } as const;
 
 export const layout = {
-  tileCornerRadius: 10,
+  tileCornerRadius: 18,
   tileSpacing: 8,
-  tileBorderWidth: 2,
+  tileBorderWidth: 3,
   visibleColumns: 6,
 } as const;

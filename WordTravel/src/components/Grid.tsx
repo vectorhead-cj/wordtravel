@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
+import { Grid as GridType, GameMode, HintLevel, RuleTile } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
+import { computeRuleFulfillment, RuleFulfillment } from '../engine/GameLogic';
 import { countValidNextWords, getValidNextWords } from '../engine/HintEngine';
 import { colors, layout } from '../theme';
 import { CellView } from './CellView';
@@ -21,6 +22,14 @@ interface GridProps {
 
 export interface GridHandle {
   injectKey: (letter: string) => void;
+}
+
+function resolveModifierColor(ruleType: RuleTile['type'], fulfillment: RuleFulfillment): string {
+  if (fulfillment === 'neutral') return colors.ruleIndicatorNeutral;
+  if (fulfillment === 'broken') return colors.ruleBroken;
+  if (ruleType === 'hardMatch') return colors.hardMatch;
+  if (ruleType === 'softMatch') return colors.softMatch;
+  return colors.forbidden;
 }
 
 const PUZZLE_GRID_PADDING = 8;
@@ -139,6 +148,16 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                   const ghostLetter = solvedCell?.letter && !cell.letter
                     ? solvedCell.letter
                     : undefined;
+                  const isActive = rowIndex === currentPosition?.row && colIndex === currentPosition?.col;
+                  const fulfillment = cell.ruleTile
+                    ? computeRuleFulfillment(grid, rowIndex, colIndex)
+                    : undefined;
+                  const modifierColor = cell.ruleTile && fulfillment
+                    ? resolveModifierColor(cell.ruleTile.type, fulfillment)
+                    : undefined;
+                  const modifierRotation: 0 | 180 =
+                    cell.ruleTile?.type === 'hardMatch' && cell.ruleTile.constraint.position === 'bottom'
+                      ? 180 : 0;
 
                   return (
                     <CellView
@@ -147,6 +166,9 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                       cellSize={cellSize}
                       tileSize={tileSize}
                       ghostLetter={ghostLetter}
+                      active={isActive}
+                      modifierColor={modifierColor}
+                      modifierRotation={modifierRotation}
                     />
                   );
                 })}
@@ -278,7 +300,7 @@ const styles = StyleSheet.create({
   },
   solveStatContainer: {
     position: 'absolute',
-    top: 120,
+    top: 60,
     left: 0,
     right: 0,
     alignItems: 'center',
