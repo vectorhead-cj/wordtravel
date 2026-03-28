@@ -39,8 +39,13 @@ function AppContent() {
   };
 
   const handleGameComplete = (result: GameResult) => {
-    setGameResult(result);
-    setCurrentScreen('result');
+    if (result.success) {
+      // Puzzle victories show results in-game; go straight home.
+      setCurrentScreen('start');
+    } else {
+      setGameResult(result);
+      setCurrentScreen('result');
+    }
   };
 
   const handleBackToMenu = () => {

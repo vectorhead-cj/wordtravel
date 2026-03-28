@@ -49,11 +49,18 @@ function findLastFilledCell(grid: Grid, mode: GameMode, before: { row: number; c
 interface UseGridInputParams {
   grid: Grid;
   mode: GameMode;
+  readOnly?: boolean;
   onGridChange: (grid: Grid) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
 }
 
-export function useGridInput({ grid, mode, onGridChange, onRowValidated }: UseGridInputParams) {
+export function useGridInput({
+  grid,
+  mode,
+  readOnly = false,
+  onGridChange,
+  onRowValidated,
+}: UseGridInputParams) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationFailedRow, setValidationFailedRow] = useState<number | null>(null);
 
@@ -65,6 +72,7 @@ export function useGridInput({ grid, mode, onGridChange, onRowValidated }: UseGr
   }, []);
 
   const handleKeyPress = useCallback((text: string) => {
+    if (readOnly) return;
     if (validationFailedRow !== null) return;
     if (!text || text.length === 0 || !currentPosition) return;
 
@@ -89,9 +97,10 @@ export function useGridInput({ grid, mode, onGridChange, onRowValidated }: UseGr
         showError(getErrorMessage(validationState));
       }
     }
-  }, [grid, mode, currentPosition, validationFailedRow, onGridChange, onRowValidated, showError]);
+  }, [readOnly, grid, mode, currentPosition, validationFailedRow, onGridChange, onRowValidated, showError]);
 
   const handleBackspace = useCallback(() => {
+    if (readOnly) return;
     const newGrid = cloneGrid(grid);
 
     if (validationFailedRow !== null) {
@@ -120,7 +129,7 @@ export function useGridInput({ grid, mode, onGridChange, onRowValidated }: UseGr
     newGrid.cells[target.row][target.col].state = 'empty';
 
     onGridChange(newGrid);
-  }, [grid, mode, currentPosition, validationFailedRow, onGridChange]);
+  }, [readOnly, grid, mode, currentPosition, validationFailedRow, onGridChange]);
 
   return {
     currentPosition,

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel, RuleTile } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
 import { computeRuleFulfillment, RuleFulfillment } from '../engine/GameLogic';
@@ -13,11 +13,18 @@ import { useGridInput } from '../hooks/useGridInput';
 interface GridProps {
   grid: GridType;
   mode: GameMode;
+  /** When true, input is disabled. Keyboard stays mounted if animation props are set. */
+  readOnly?: boolean;
   onGridChange: (grid: GridType) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
   hintLevel: HintLevel;
   solveOverlay?: SolveFromHereResult | null;
   scrollContentTopInset?: number;
+  /** Animated transform applied to the puzzle cell area (uniform zoom). */
+  puzzleScale?: Animated.Value;
+  puzzleTranslateY?: Animated.Value;
+  /** Animated translateY for sliding the keyboard off-screen. */
+  keyboardTranslateY?: Animated.Value;
 }
 
 export interface GridHandle {
@@ -38,11 +45,15 @@ const HINT_AREA_WIDTH = 56;
 export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   grid,
   mode,
+  readOnly = false,
   onGridChange,
   onRowValidated,
   hintLevel,
   solveOverlay,
   scrollContentTopInset = 0,
+  puzzleScale,
+  puzzleTranslateY,
+  keyboardTranslateY,
 }, ref) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [gridAreaLayout, setGridAreaLayout] = useState<{ width: number; height: number } | null>(null);
@@ -50,6 +61,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   const { currentPosition, errorMessage, validationFailed, handleKeyPress, handleBackspace } = useGridInput({
     grid,
     mode,
+    readOnly,
     onGridChange,
     onRowValidated,
   });
@@ -188,21 +200,37 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
     );
   };
 
+  const puzzleContent = (
+    <>
+      {scrollContentTopInset > 0 && <View style={{ height: scrollContentTopInset }} />}
+      <View
+        style={styles.puzzleArea}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          setGridAreaLayout({ width, height });
+        }}
+      >
+        {gridAreaLayout && renderGridContent()}
+      </View>
+    </>
+  );
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents={readOnly ? 'box-none' : 'auto'}>
       {mode === 'puzzle' ? (
-        <>
-          {scrollContentTopInset > 0 && <View style={{ height: scrollContentTopInset }} />}
-          <View
-            style={styles.puzzleArea}
-            onLayout={(e) => {
-              const { width, height } = e.nativeEvent.layout;
-              setGridAreaLayout({ width, height });
-            }}
-          >
-            {gridAreaLayout && renderGridContent()}
-          </View>
-        </>
+        puzzleScale ? (
+          <Animated.View style={{
+            flex: 1,
+            transform: [
+              { scale: puzzleScale },
+              { translateY: puzzleTranslateY ?? 0 },
+            ],
+          }}>
+            {puzzleContent}
+          </Animated.View>
+        ) : (
+          puzzleContent
+        )
       ) : (
         <ScrollView
           ref={scrollViewRef}
@@ -218,7 +246,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         </ScrollView>
       )}
 
-      {solveOverlay && (
+      {!readOnly && solveOverlay && (
         <View style={styles.solveStatContainer}>
           <Text style={styles.solveStatText}>
             Solvable: {(solveOverlay.successRate * 100).toFixed(1)}% (1000 runs)
@@ -229,26 +257,34 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         </View>
       )}
 
-      <ErrorToast message={errorMessage} />
+      {(!readOnly || keyboardTranslateY != null) && (
+        <Animated.View
+          style={keyboardTranslateY ? { transform: [{ translateY: keyboardTranslateY }] } : undefined}
+          pointerEvents={readOnly ? 'none' : 'auto'}
+        >
+          <ErrorToast message={errorMessage} />
+          <CustomKeyboard onKey={letter => handleKeyPress(letter)} onBackspace={handleBackspace} />
+        </Animated.View>
+      )}
 
-      <CustomKeyboard onKey={letter => handleKeyPress(letter)} onBackspace={handleBackspace} />
-
-      <TextInput
-        style={styles.hardwareInput}
-        value=""
-        onChangeText={handleKeyPress}
-        onKeyPress={e => {
-          if (e.nativeEvent.key === 'Backspace') {
-            handleBackspace();
-          }
-        }}
-        showSoftInputOnFocus={false}
-        autoFocus
-        autoCapitalize="characters"
-        autoCorrect={false}
-        keyboardType="ascii-capable"
-        importantForAutofill="no"
-      />
+      {!readOnly && (
+        <TextInput
+          style={styles.hardwareInput}
+          value=""
+          onChangeText={handleKeyPress}
+          onKeyPress={e => {
+            if (e.nativeEvent.key === 'Backspace') {
+              handleBackspace();
+            }
+          }}
+          showSoftInputOnFocus={false}
+          autoFocus
+          autoCapitalize="characters"
+          autoCorrect={false}
+          keyboardType="ascii-capable"
+          importantForAutofill="no"
+        />
+      )}
     </View>
   );
 });

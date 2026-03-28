@@ -87,6 +87,8 @@ export interface GameState {
 export interface GameResult {
   success: boolean;
   score: number;
+  /** Snapshot of the grid after a successful puzzle solve (for results UI). */
+  finalGrid?: Grid;
   timeElapsed?: number;
   uniqueLetterCount?: number;
   difficulty?: Difficulty;
