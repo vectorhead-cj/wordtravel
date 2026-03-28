@@ -179,6 +179,23 @@ describe('HintEngine', () => {
         expect(result.examples.every(w => 'rot'.includes(w[0]))).toBe(true);
       });
 
+      it('returns hints when softMatch→fixed row is the only active constraint (no upstream completed row)', () => {
+        const softToRow2: SoftMatchTile = {
+          type: 'softMatch',
+          constraint: { nextRow: 2 },
+        };
+
+        const grid = createGrid([
+          [createCell(null), createCell(null), createCell(null), createCell(null)],
+          [createCell(null, true, softToRow2), createCell(null), createCell(null), createCell(null)],
+          [createCell(null, false), fixedCell('R'), fixedCell('O'), fixedCell('T')],
+        ]);
+
+        const result = getValidNextWords(grid, 1, 1000);
+        expect(result.count).toBeGreaterThan(0);
+        expect(result.examples.every(w => 'rot'.includes(w[0]))).toBe(true);
+      });
+
       it('does not filter when the next row is incomplete', () => {
         const hardMatchRow1: HardMatchTile = {
           type: 'hardMatch',

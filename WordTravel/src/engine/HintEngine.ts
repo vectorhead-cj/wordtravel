@@ -60,13 +60,6 @@ function getMatchingWordsForRow(grid: Grid, targetRow: number): string[] {
     }
   }
 
-  const hasActiveConstraints =
-    hardMatchConstraints.size > 0 ||
-    softMatchRequired.length > 0 ||
-    forbiddenLetters.size > 0;
-
-  if (!hasActiveConstraints) return [];
-
   // For each forbiddenMatch tile in targetRow, the letter placed there will be
   // forbidden in the pointed-to next row. Collect ALL letters required in that
   // next row (fixed cells, hardMatch constraints, and softMatch from completed rows)
@@ -149,6 +142,15 @@ function getMatchingWordsForRow(grid: Grid, targetRow: number): string[] {
       positionAllowedLetters.set(i, nextRowLetters);
     }
   }
+
+  const hasActiveConstraints =
+    hardMatchConstraints.size > 0 ||
+    softMatchRequired.length > 0 ||
+    forbiddenLetters.size > 0 ||
+    positionForbiddenLetters.size > 0 ||
+    positionAllowedLetters.size > 0;
+
+  if (!hasActiveConstraints) return [];
 
   let words = generatorDictionary.getWordsMatchingConstraints(wordLength, {
     positionConstraints: hardMatchConstraints.size > 0 ? hardMatchConstraints : undefined,

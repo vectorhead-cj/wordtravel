@@ -4,8 +4,6 @@ import { generatorDictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
 import { simulatePuzzleDifficulty } from './DifficultySimulator';
 
-const MAX_GENERATION_ATTEMPTS = 50;
-
 export interface GeneratedPuzzle {
   puzzle: string;
   difficulty: Difficulty;
@@ -14,9 +12,7 @@ export interface GeneratedPuzzle {
 
 export class PuzzleGenerator {
   generatePuzzle(puzzleType: PuzzleType = 'open', targetDifficulty?: Difficulty): GeneratedPuzzle {
-    let bestResult: GeneratedPuzzle | null = null;
-
-    for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+    while (true) {
       const config = this.generatePuzzleConfig(0, 0, puzzleType);
       const grid = this.createGridFromConfig(config, puzzleType);
 
@@ -25,33 +21,14 @@ export class PuzzleGenerator {
       const sim = simulatePuzzleDifficulty(grid);
       if (sim.difficulty === null) continue;
 
-      const result: GeneratedPuzzle = {
+      if (targetDifficulty !== undefined && sim.difficulty !== targetDifficulty) continue;
+
+      return {
         puzzle: serializeGrid(grid),
         difficulty: sim.difficulty,
         successRate: sim.successRate,
       };
-
-      if (!targetDifficulty || sim.difficulty === targetDifficulty) {
-        return result;
-      }
-
-      bestResult = bestResult ?? result;
     }
-
-    if (bestResult) {
-      console.warn(`[PuzzleGenerator] Could not match target difficulty "${targetDifficulty}", returning best-effort (${bestResult.difficulty})`);
-      return bestResult;
-    }
-
-    console.warn('[PuzzleGenerator] Max generation attempts reached with no valid grid');
-    const config = this.generatePuzzleConfig(0, 0, puzzleType);
-    const grid = this.createGridFromConfig(config, puzzleType);
-    const sim = simulatePuzzleDifficulty(grid);
-    return {
-      puzzle: serializeGrid(grid),
-      difficulty: sim.difficulty,
-      successRate: sim.successRate,
-    };
   }
 
   generatePuzzleConfig(paddingRowsTop: number = 1, paddingRowsBottom: number = 1, puzzleType: PuzzleType = 'open'): PuzzleConfig {

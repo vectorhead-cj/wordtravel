@@ -66,36 +66,38 @@ export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
-      
-      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'softMatch') {
-        const targetRow = sourceCell.ruleTile.constraint.nextRow;
-        
-        if (targetRow === row) {
-          if (!isRowComplete(grid, sourceRow)) continue;
 
-          const letterToFind = sourceCell.letter;
-          
-          if (!letterToFind) {
-            return false;
-          }
-          
-          let foundInTargetRow = false;
-          for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
-            const targetCell = grid.cells[targetRow][targetCol];
-            if (targetCell.accessible && targetCell.letter === letterToFind) {
-              foundInTargetRow = true;
-              break;
-            }
-          }
-          
-          if (!foundInTargetRow) {
-            return false;
-          }
+      if (!sourceCell.accessible || sourceCell.ruleTile?.type !== 'softMatch') continue;
+
+      const targetRow = sourceCell.ruleTile.constraint.nextRow;
+      const validatingTargetRow = targetRow === row;
+      const validatingSourceRowWithKnownTarget =
+        sourceRow === row && isRowComplete(grid, targetRow);
+
+      if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
+
+      if (!isRowComplete(grid, sourceRow)) continue;
+
+      const letterToFind = sourceCell.letter;
+      if (!letterToFind) {
+        return false;
+      }
+
+      let foundInTargetRow = false;
+      for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
+        const targetCell = grid.cells[targetRow][targetCol];
+        if (targetCell.accessible && targetCell.letter === letterToFind) {
+          foundInTargetRow = true;
+          break;
         }
+      }
+
+      if (!foundInTargetRow) {
+        return false;
       }
     }
   }
-  
+
   return true;
 }
 
@@ -104,21 +106,24 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
 
-      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'forbiddenMatch') {
-        const targetRow = sourceCell.ruleTile.constraint.nextRow;
+      if (!sourceCell.accessible || sourceCell.ruleTile?.type !== 'forbiddenMatch') continue;
 
-        if (targetRow === row) {
-          if (!isRowComplete(grid, sourceRow)) continue;
+      const targetRow = sourceCell.ruleTile.constraint.nextRow;
+      const validatingTargetRow = targetRow === row;
+      const validatingSourceRowWithKnownTarget =
+        sourceRow === row && isRowComplete(grid, targetRow);
 
-          const forbiddenLetter = sourceCell.letter;
-          if (!forbiddenLetter) continue;
+      if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
 
-          for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
-            const targetCell = grid.cells[targetRow][targetCol];
-            if (targetCell.accessible && targetCell.letter === forbiddenLetter) {
-              return false;
-            }
-          }
+      if (!isRowComplete(grid, sourceRow)) continue;
+
+      const forbiddenLetter = sourceCell.letter;
+      if (!forbiddenLetter) continue;
+
+      for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
+        const targetCell = grid.cells[targetRow][targetCol];
+        if (targetCell.accessible && targetCell.letter === forbiddenLetter) {
+          return false;
         }
       }
     }
@@ -209,9 +214,15 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
       if (cell.ruleTile.type === 'hardMatch') {
         hasHardMatchTile = true;
       }
+      if (cell.ruleTile.type === 'softMatch') {
+        hasSoftMatchTile = true;
+      }
+      if (cell.ruleTile.type === 'forbiddenMatch') {
+        hasForbiddenMatchTile = true;
+      }
     }
   }
-  
+
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];

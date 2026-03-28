@@ -132,28 +132,58 @@ function getCandidatesForRow(
     }
   }
 
+  const forwardSoftAllowedByPos = new Map<number, Set<string>>();
+  for (let i = 0; i < accessibleCols.length; i++) {
+    const col = accessibleCols[i];
+    const cell = grid.cells[row][col];
+    if (cell.ruleTile?.type !== 'softMatch') continue;
+
+    const nextRow = cell.ruleTile.constraint.nextRow;
+    if (!isRowFilled(grid, nextRow)) continue;
+
+    const letters = new Set<string>();
+    for (let c = 0; c < grid.cols; c++) {
+      const nextCell = grid.cells[nextRow][c];
+      if (nextCell.accessible && nextCell.letter) {
+        letters.add(nextCell.letter.toLowerCase());
+      }
+    }
+    if (letters.size > 0) {
+      forwardSoftAllowedByPos.set(i, letters);
+    }
+  }
+
   const hasConstraints =
     positionConstraints.size > 0 ||
     mustContain.length > 0 ||
-    mustNotContain.size > 0;
+    mustNotContain.size > 0 ||
+    forwardSoftAllowedByPos.size > 0;
 
+  let words: string[];
   if (!hasConstraints && usedWords.size === 0) {
-    return generatorDictionary.getWordsOfLength(wordLength);
+    words = generatorDictionary.getWordsOfLength(wordLength);
+  } else if (!hasConstraints) {
+    words = generatorDictionary.getWordsOfLength(wordLength).filter(w => !usedWords.has(w));
+  } else {
+    const query: ConstraintQuery = {
+      positionConstraints: positionConstraints.size > 0 ? positionConstraints : undefined,
+      mustContain: mustContain.length > 0 ? mustContain : undefined,
+      mustNotContain: mustNotContain.size > 0 ? mustNotContain : undefined,
+      excludeWords: usedWords.size > 0 ? usedWords : undefined,
+    };
+    words = generatorDictionary.getWordsMatchingConstraints(wordLength, query);
   }
 
-  if (!hasConstraints) {
-    return generatorDictionary.getWordsOfLength(wordLength)
-      .filter(w => !usedWords.has(w));
+  if (forwardSoftAllowedByPos.size > 0) {
+    words = words.filter(word => {
+      for (const [pos, allowed] of forwardSoftAllowedByPos) {
+        if (!allowed.has(word[pos])) return false;
+      }
+      return true;
+    });
   }
 
-  const query: ConstraintQuery = {
-    positionConstraints: positionConstraints.size > 0 ? positionConstraints : undefined,
-    mustContain: mustContain.length > 0 ? mustContain : undefined,
-    mustNotContain: mustNotContain.size > 0 ? mustNotContain : undefined,
-    excludeWords: usedWords.size > 0 ? usedWords : undefined,
-  };
-
-  return generatorDictionary.getWordsMatchingConstraints(wordLength, query);
+  return words;
 }
 
 function isRowFilled(grid: Grid, row: number): boolean {

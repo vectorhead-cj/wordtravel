@@ -13,7 +13,8 @@ import { playerDictionary } from './Dictionary';
 function createTestCell(
   letter: string | null = null,
   accessible: boolean = true,
-  ruleTile?: RuleTile
+  ruleTile?: RuleTile,
+  fixed?: boolean,
 ): Cell {
   return {
     letter,
@@ -21,6 +22,7 @@ function createTestCell(
     ruleTile,
     state: 'empty',
     validation: 'none',
+    ...(fixed ? { fixed: true } : {}),
   };
 }
 
@@ -238,7 +240,55 @@ describe('GameLogic Validation', () => {
       expect(validateSoftMatchTiles(grid, 1)).toBe(true);
     });
 
-    it('should return true when validating source row (never fails on source)', () => {
+    it('should return false when validating source row if fixed row below lacks the soft-match letter', () => {
+      const softOnC: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [
+          createTestCell('C', true, softOnC),
+          createTestCell('L', true),
+          createTestCell('A', true),
+          createTestCell('Y', true),
+        ],
+        [
+          createTestCell('M', true, undefined, true),
+          createTestCell('U', true, undefined, true),
+          createTestCell('D', true, undefined, true),
+          createTestCell('S', true, undefined, true),
+        ],
+      ]);
+
+      expect(validateSoftMatchTiles(grid, 0)).toBe(false);
+    });
+
+    it('should return true when validating source row if the row below contains the soft-match letter', () => {
+      const softOnC: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { nextRow: 1 },
+      };
+
+      const grid = createTestGrid([
+        [
+          createTestCell('C', true, softOnC),
+          createTestCell('A', true),
+          createTestCell('R', true),
+          createTestCell('P', true),
+        ],
+        [
+          createTestCell('S', true, undefined, true),
+          createTestCell('C', true, undefined, true),
+          createTestCell('A', true, undefined, true),
+          createTestCell('R', true, undefined, true),
+        ],
+      ]);
+
+      expect(validateSoftMatchTiles(grid, 0)).toBe(true);
+    });
+
+    it('should skip soft match from source row when the row below is not yet complete', () => {
       const ruleTile: SoftMatchTile = {
         type: 'softMatch',
         constraint: { nextRow: 1 },
@@ -246,7 +296,7 @@ describe('GameLogic Validation', () => {
 
       const grid = createTestGrid([
         [createTestCell('A', true, ruleTile), createTestCell('B', true)],
-        [createTestCell('X', true), createTestCell('Y', true)],
+        [createTestCell('X', true), createTestCell(null, true)],
       ]);
 
       expect(validateSoftMatchTiles(grid, 0)).toBe(true);
@@ -399,7 +449,7 @@ describe('GameLogic Validation', () => {
       expect(validateForbiddenMatchTiles(grid, 1)).toBe(false);
     });
 
-    it('should return true when validating source row (never fails on source)', () => {
+    it('should return false when validating source row if fixed row below contains the forbidden letter', () => {
       const ruleTile: ForbiddenMatchTile = {
         type: 'forbiddenMatch',
         constraint: { nextRow: 1 },
@@ -407,10 +457,10 @@ describe('GameLogic Validation', () => {
 
       const grid = createTestGrid([
         [createTestCell('A', true, ruleTile), createTestCell('B', true)],
-        [createTestCell('A', true), createTestCell('X', true)],
+        [createTestCell('A', true, undefined, true), createTestCell('X', true, undefined, true)],
       ]);
 
-      expect(validateForbiddenMatchTiles(grid, 0)).toBe(true);
+      expect(validateForbiddenMatchTiles(grid, 0)).toBe(false);
     });
 
     it('should skip check when source row is incomplete', () => {
@@ -700,7 +750,7 @@ describe('GameLogic Validation', () => {
       ]);
 
       const state0 = getRowValidationState(grid, 0);
-      expect(state0.hasSoftMatchTile).toBe(false);
+      expect(state0.hasSoftMatchTile).toBe(true);
 
       const state1 = getRowValidationState(grid, 1);
       expect(state1.hasSoftMatchTile).toBe(true);

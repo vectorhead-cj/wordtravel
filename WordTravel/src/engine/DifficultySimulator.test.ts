@@ -1,7 +1,12 @@
-import { simulatePuzzleDifficulty, classifyDifficulty } from './DifficultySimulator';
+import {
+  simulatePuzzleDifficulty,
+  classifyDifficulty,
+  solveFromHere,
+} from './DifficultySimulator';
 import { PuzzleGenerator } from './PuzzleGenerator';
 import { parseGrid } from './PuzzleNotation';
 import { generatorDictionary, playerDictionary } from './Dictionary';
+import { Grid, Cell, SoftMatchTile } from './types';
 
 describe('DifficultySimulator', () => {
   beforeAll(() => {
@@ -66,6 +71,49 @@ describe('DifficultySimulator', () => {
 
       const result = simulatePuzzleDifficulty(grid, 20);
       expect(result.successRate).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should respect softMatch to an already-filled row below (fixed bottom word)', () => {
+      const softToRow2: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { nextRow: 2 },
+      };
+      function fixedCell(letter: string): Cell {
+        return {
+          letter,
+          accessible: true,
+          fixed: true,
+          state: 'locked',
+          validation: 'correct',
+        };
+      }
+      const grid: Grid = {
+        rows: 3,
+        cols: 4,
+        cells: [
+          [
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+          ],
+          [
+            { letter: null, accessible: true, state: 'empty', validation: 'none', ruleTile: softToRow2 },
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+            { letter: null, accessible: true, state: 'empty', validation: 'none' },
+          ],
+          [
+            { letter: null, accessible: false, state: 'empty', validation: 'none' },
+            fixedCell('R'),
+            fixedCell('O'),
+            fixedCell('T'),
+          ],
+        ],
+      };
+
+      const result = solveFromHere(grid, 400);
+      expect(result.successRate).toBeGreaterThan(0.2);
     });
   });
 });
