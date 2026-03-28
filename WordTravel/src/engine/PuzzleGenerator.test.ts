@@ -209,6 +209,24 @@ describe('PuzzleGenerator', () => {
           }
         });
 
+        it(`should never have a fixed soft match whose letter is already fixed in the target row (${ITERATIONS} puzzles)`, () => {
+          for (let i = 0; i < ITERATIONS; i++) {
+            const grid = generateGridFast(puzzleType);
+            for (let r = 0; r < grid.rows; r++) {
+              for (let c = 0; c < grid.cols; c++) {
+                const cell = grid.cells[r][c];
+                if (cell.ruleTile?.type !== 'softMatch' || !cell.fixed || !cell.letter) continue;
+                const targetRow = cell.ruleTile.constraint.nextRow;
+                const targetCells = grid.cells[targetRow];
+                const hasTrivialMatch = targetCells.some(
+                  tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+                );
+                expect(hasTrivialMatch).toBe(false);
+              }
+            }
+          }
+        });
+
         it(`should have valid forbidden match on completed rows (${ITERATIONS} puzzles)`, () => {
           for (let i = 0; i < ITERATIONS; i++) {
             const grid = generateGridFast(puzzleType);

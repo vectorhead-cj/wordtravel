@@ -26,6 +26,6 @@ export const PUZZLE_CONFIG = {
 
   DIFFICULTY_SIMULATION_TRIALS: 500,
   // successRate >= easy → easy, >= medium → medium, >= hard → hard, else rejected
-  DIFFICULTY_THRESHOLDS: { easy: 0.50, medium: 0.25, hard: 0.05 } as { easy: number; medium: number; hard: number },
+  DIFFICULTY_THRESHOLDS: { easy: 0.50, medium: 0.2, hard: 0.02 } as { easy: number; medium: number; hard: number },
 } as const;
 

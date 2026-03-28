@@ -196,8 +196,17 @@ export class PuzzleGenerator {
       
       const currentCell = grid.cells[randomRow][randomCol];
       const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
-      
-      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
+      const trivialSoftMatch = currentCell.fixed && currentCell.letter &&
+        grid.cells[randomRow + 1].some(
+          tc => tc.accessible && tc.fixed && tc.letter === currentCell.letter,
+        );
+
+      if (
+        currentCell.accessible &&
+        !currentCell.ruleTile &&
+        hasAccessibleNextRow &&
+        !trivialSoftMatch
+      ) {
         const tile: SoftMatchTile = {
           type: 'softMatch',
           constraint: {
@@ -290,6 +299,12 @@ export class PuzzleGenerator {
         // Try ○ with the next row
         if (slot.row + 1 < grid.rows &&
             grid.cells[slot.row + 1].some(c => c.accessible)) {
+          const trivial = cell.fixed && cell.letter &&
+            grid.cells[slot.row + 1].some(
+              tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+            );
+          if (trivial) continue;
+
           cell.ruleTile = {
             type: 'softMatch',
             constraint: { nextRow: slot.row + 1 },
@@ -314,11 +329,14 @@ export class PuzzleGenerator {
           const targetRow = cell.ruleTile.constraint.nextRow;
           const targetCells = grid.cells[targetRow];
           if (!targetCells) continue;
+
+          // Trivially satisfied: letter already fixed in target row
+          const hasFixedMatch = targetCells.some(tc => tc.accessible && tc.fixed && tc.letter === cell.letter);
+          if (hasFixedMatch) return false;
+
+          // Impossible: entire target row is fixed but letter not present
           const allFixed = targetCells.every(tc => !tc.accessible || tc.fixed);
-          if (allFixed) {
-            const hasMatch = targetCells.some(tc => tc.accessible && tc.letter === cell.letter);
-            if (!hasMatch) return false;
-          }
+          if (allFixed) return false;
         }
 
         if (cell.ruleTile.type === 'forbiddenMatch' && cell.fixed && cell.letter) {

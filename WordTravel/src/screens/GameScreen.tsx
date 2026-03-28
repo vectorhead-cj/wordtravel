@@ -77,7 +77,7 @@ export function GameScreen({
     const fixedH = SECTION_GAP * 5 + TITLE_BLOCK_H + STATS_BLOCK_H + BUTTON_BLOCK_H;
     const puzzleSlotH = Math.max(100, containerH - fixedH);
 
-    const scale = Math.min(1.1, 1.5 * puzzleSlotH / puzzleViewH);
+    const scale = Math.min(1.5, 1.5 * puzzleSlotH / puzzleViewH);
     const slotCenter = SECTION_GAP + TITLE_BLOCK_H + SECTION_GAP + puzzleSlotH / 2;
     const translateY = slotCenter - puzzleViewH / 2;
 
