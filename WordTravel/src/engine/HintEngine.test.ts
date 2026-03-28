@@ -56,8 +56,8 @@ describe('HintEngine', () => {
         // Row 2:
         //   col 0: hardMatch → row0,col0  → must be 'A'
         //
-        // AFAR = A·F·A·R puts 'A' at col 2 (forbiddenMatch), banning 'A' from row 2.
-        // But row 2 requires 'A' via its own hardMatch → AFAR is a dead end.
+        // AWAY = A·W·A·Y puts 'A' at col 2 (forbiddenMatch), banning 'A' from row 2.
+        // But row 2 requires 'A' via its own hardMatch → AWAY is a dead end.
 
         const hardMatchRow1: HardMatchTile = {
           type: 'hardMatch',
@@ -81,8 +81,8 @@ describe('HintEngine', () => {
         const result = getValidNextWords(grid, 1, 1000);
 
         expect(result.count).toBeGreaterThan(0);
-        // 'afar' has 'A' at position 2 — banned because row 2 needs 'A'
-        expect(result.examples).not.toContain('afar');
+        // 'away' has 'A' at position 2 — banned because row 2 needs 'A'
+        expect(result.examples).not.toContain('away');
         // 'also' has 'S' at position 2 — no conflict with row 2's 'A' requirement
         expect(result.examples).toContain('also');
       });
@@ -115,12 +115,12 @@ describe('HintEngine', () => {
         const result = getValidNextWords(grid, 1, 1000);
 
         expect(result.count).toBeGreaterThan(0);
-        expect(result.examples).not.toContain('afar');
+        expect(result.examples).not.toContain('away');
       });
 
       it('does NOT filter words when the forbiddenMatch letter does not conflict with the next row', () => {
         // Row 2 has no constraints, so nothing is required there.
-        // AFAR should be a valid suggestion (it starts with 'A' as required).
+        // ALSO should be a valid suggestion (it starts with 'A' as required).
 
         const hardMatchRow1: HardMatchTile = {
           type: 'hardMatch',
@@ -138,7 +138,7 @@ describe('HintEngine', () => {
         ]);
 
         const result = getValidNextWords(grid, 1, 1000);
-        expect(result.examples).toContain('afar');
+        expect(result.examples).toContain('also');
       });
     });
 

@@ -10,18 +10,18 @@ describe('DifficultySimulator', () => {
 
   describe('classifyDifficulty', () => {
     it('should classify high success rate as easy', () => {
-      expect(classifyDifficulty(0.5)).toBe('easy');
-      expect(classifyDifficulty(0.30)).toBe('easy');
+      expect(classifyDifficulty(0.9)).toBe('easy');
+      expect(classifyDifficulty(0.95)).toBe('easy');
     });
 
     it('should classify medium success rate as medium', () => {
-      expect(classifyDifficulty(0.15)).toBe('medium');
-      expect(classifyDifficulty(0.05)).toBe('medium');
+      expect(classifyDifficulty(0.6)).toBe('medium');
+      expect(classifyDifficulty(0.65)).toBe('medium');
     });
 
     it('should classify low success rate as hard', () => {
-      expect(classifyDifficulty(0.04)).toBe('hard');
-      expect(classifyDifficulty(0.02)).toBe('hard');
+      expect(classifyDifficulty(0.1)).toBe('hard');
+      expect(classifyDifficulty(0.15)).toBe('hard');
     });
 
     it('should reject puzzles below the hard threshold', () => {
