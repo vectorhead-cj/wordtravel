@@ -204,6 +204,85 @@ function getCandidatesForRow(
     });
   }
 
+  const colToHardMatchLetter = new Map<number, string>();
+  for (const [i, letter] of positionConstraints) {
+    colToHardMatchLetter.set(accessibleCols[i], letter);
+  }
+
+  const positionForbiddenLetters = new Map<number, Set<string>>();
+  const targetRow = row;
+  for (let i = 0; i < accessibleCols.length; i++) {
+    const col = accessibleCols[i];
+    const cell = grid.cells[targetRow][col];
+    if (cell.ruleTile?.type !== 'forbiddenMatch') continue;
+
+    const requiredUnion = new Set<string>();
+    for (const destRow of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+      const destRowCells = grid.cells[destRow];
+      if (!destRowCells) continue;
+
+      const requiredInDest = new Set<string>();
+
+      if (isRowFilled(grid, destRow)) {
+        for (const destCell of destRowCells) {
+          if (destCell.accessible && destCell.letter) {
+            requiredInDest.add(destCell.letter.toLowerCase());
+          }
+        }
+      } else {
+        for (const destCell of destRowCells) {
+          if (!destCell.accessible) continue;
+
+          if (destCell.fixed && destCell.letter) {
+            requiredInDest.add(destCell.letter.toLowerCase());
+          } else if (destCell.ruleTile?.type === 'hardMatch') {
+            const { pairedRow, pairedCol } = destCell.ruleTile.constraint;
+            const pairedCell = grid.cells[pairedRow]?.[pairedCol];
+            if (pairedCell?.letter) {
+              requiredInDest.add(pairedCell.letter.toLowerCase());
+            } else if (pairedRow === targetRow) {
+              const required = colToHardMatchLetter.get(pairedCol);
+              if (required) requiredInDest.add(required);
+            }
+          }
+        }
+
+        for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+          if (!isRowFilled(grid, sourceRow)) continue;
+          for (let sourceCol = 0; sourceCol < grid.cols; sourceCol++) {
+            const sourceCell = grid.cells[sourceRow][sourceCol];
+            const sc = sourceCell.ruleTile?.type === 'softMatch' ? sourceCell.ruleTile.constraint : null;
+            if (
+              sourceCell.accessible &&
+              sc &&
+              softForbiddenTargetRows(sc).includes(destRow) &&
+              sourceCell.letter
+            ) {
+              requiredInDest.add(sourceCell.letter.toLowerCase());
+            }
+          }
+        }
+      }
+
+      for (const letter of requiredInDest) {
+        requiredUnion.add(letter);
+      }
+    }
+
+    if (requiredUnion.size > 0) {
+      positionForbiddenLetters.set(i, requiredUnion);
+    }
+  }
+
+  if (positionForbiddenLetters.size > 0) {
+    words = words.filter(word => {
+      for (const [pos, forbidden] of positionForbiddenLetters) {
+        if (forbidden.has(word[pos])) return false;
+      }
+      return true;
+    });
+  }
+
   return words;
 }
 

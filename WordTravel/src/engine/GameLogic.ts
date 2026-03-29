@@ -76,10 +76,21 @@ export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
         return false;
       }
 
-      for (const targetRow of softForbiddenTargetRows(sourceCell.ruleTile.constraint)) {
+      const softTargets = softForbiddenTargetRows(sourceCell.ruleTile.constraint);
+      const multiTargetSoft = softTargets.length > 1;
+      if (
+        sourceRow === row &&
+        multiTargetSoft &&
+        !softTargets.every(t => isRowComplete(grid, t))
+      ) {
+        return false;
+      }
+
+      for (const targetRow of softTargets) {
         const validatingTargetRow = targetRow === row;
         const validatingSourceRowWithKnownTarget =
-          sourceRow === row && isRowComplete(grid, targetRow);
+          sourceRow === row &&
+          (multiTargetSoft || isRowComplete(grid, targetRow));
 
         if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
 
@@ -116,10 +127,9 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
 
       for (const targetRow of softForbiddenTargetRows(sourceCell.ruleTile.constraint)) {
         const validatingTargetRow = targetRow === row;
-        const validatingSourceRowWithKnownTarget =
-          sourceRow === row && isRowComplete(grid, targetRow);
+        const validatingSourceRow = sourceRow === row;
 
-        if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
+        if (!validatingTargetRow && !validatingSourceRow) continue;
 
         for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
           const targetCell = grid.cells[targetRow][targetCol];

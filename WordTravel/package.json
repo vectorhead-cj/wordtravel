@@ -7,7 +7,8 @@
     "ios": "react-native run-ios --mode Debug --simulator \"iPhone 17 Pro\"",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "puzzle:lab": "jest src/engine/puzzleLaboratory.test.ts --watchman=false --no-cache"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.82.0",

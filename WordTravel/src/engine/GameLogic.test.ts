@@ -1089,6 +1089,45 @@ describe('GameLogic Validation', () => {
       ]);
       expect(validateForbiddenMatchTiles(grid, 1)).toBe(false);
     });
+
+    it('validateSoftMatchTiles fails bidirectional source row until both adjacent rows are complete', () => {
+      const softBoth: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { prevRow: 0, nextRow: 2 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true), createTestCell('B', true)],
+        [createTestCell('A', true, softBoth), createTestCell('X', true)],
+        [createTestCell(null, true), createTestCell(null, true)],
+      ]);
+      expect(validateSoftMatchTiles(grid, 1)).toBe(false);
+    });
+
+    it('validateSoftMatchTiles still defers unidirectional nextRow when only the row below is incomplete', () => {
+      const softDown: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { nextRow: 2 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true), createTestCell('B', true)],
+        [createTestCell('A', true, softDown), createTestCell('X', true)],
+        [createTestCell(null, true), createTestCell(null, true)],
+      ]);
+      expect(validateSoftMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('validateSoftMatchTiles succeeds for bidirectional when both neighbors are complete and contain the letter', () => {
+      const softBoth: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { prevRow: 0, nextRow: 2 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true), createTestCell('B', true)],
+        [createTestCell('A', true, softBoth), createTestCell('X', true)],
+        [createTestCell('A', true), createTestCell('Y', true)],
+      ]);
+      expect(validateSoftMatchTiles(grid, 1)).toBe(true);
+    });
   });
 });
 

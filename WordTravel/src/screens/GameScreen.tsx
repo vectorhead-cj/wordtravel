@@ -8,13 +8,16 @@ import {
   Easing,
   Dimensions,
   Pressable,
+  ScrollView,
+  Clipboard,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel, SolveMode, cloneGrid } from '../engine/types';
 import { Grid, GridHandle } from '../components/Grid';
 import { createMockGrid } from '../engine/mockData';
 import { puzzleGenerator, GeneratedPuzzle } from '../engine/PuzzleGenerator';
-import { parseGrid } from '../engine/PuzzleNotation';
+import { parseGrid, serializeGridDebug } from '../engine/PuzzleNotation';
 import { solveFromHere, SolveFromHereResult } from '../engine/DifficultySimulator';
 import { getWordFromRow } from '../engine/GameLogic';
 import { playerDictionary } from '../engine/Dictionary';
@@ -119,6 +122,9 @@ export function GameScreen({
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
   const [headerBarHeight, setHeaderBarHeight] = useState(56);
   const [debugToastOpen, setDebugToastOpen] = useState(false);
+  const [notationCopied, setNotationCopied] = useState(false);
+  const copyNotationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debugNotation = useMemo(() => serializeGridDebug(grid), [grid]);
 
   // ---- completion state & animation ----
   const [completedResult, setCompletedResult] = useState<GameResult | null>(null);
@@ -134,8 +140,28 @@ export function GameScreen({
   const buttonOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    return () => autoSolverRef.current?.stop();
+    return () => {
+      autoSolverRef.current?.stop();
+      if (copyNotationTimeoutRef.current) clearTimeout(copyNotationTimeoutRef.current);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!debugToastOpen) setNotationCopied(false);
+  }, [debugToastOpen]);
+
+  const handleCopyDebugNotation = useCallback(() => {
+    if (__DEV__) {
+      console.log('[WordTravel] debug notation\n' + debugNotation);
+    }
+    Clipboard.setString(debugNotation);
+    setNotationCopied(true);
+    if (copyNotationTimeoutRef.current) clearTimeout(copyNotationTimeoutRef.current);
+    copyNotationTimeoutRef.current = setTimeout(() => {
+      setNotationCopied(false);
+      copyNotationTimeoutRef.current = null;
+    }, 2000);
+  }, [debugNotation]);
 
   const cycleHintLevel = () => {
     setHintLevel(prev => (prev === 'off' ? 'count' : prev === 'count' ? 'example' : 'off'));
@@ -398,7 +424,14 @@ export function GameScreen({
           <View style={[styles.headerSide, styles.headerSideEnd]}>
             <TouchableOpacity
               style={styles.headerButton}
-              onPress={() => setDebugToastOpen(v => !v)}
+              onPress={() => {
+                setDebugToastOpen(v => {
+                  if (!v && __DEV__) {
+                    console.log('[WordTravel] debug notation\n' + debugNotation);
+                  }
+                  return !v;
+                });
+              }}
               hitSlop={8}
               accessibilityLabel="Debug tools"
             >
@@ -449,6 +482,33 @@ export function GameScreen({
               <Text style={styles.debugToastLabel}>Autosolve</Text>
               <Text style={styles.debugToastValue}>Run</Text>
             </TouchableOpacity>
+            <View style={styles.debugNotationBlock}>
+              <Text style={styles.debugNotationLabel}>Notation</Text>
+              <ScrollView
+                style={styles.debugNotationScroll}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text
+                  style={styles.debugNotationText}
+                  selectable
+                  accessibilityLabel="Puzzle notation for debugging"
+                >
+                  {debugNotation}
+                </Text>
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.debugToastRow}
+                onPress={handleCopyDebugNotation}
+                accessibilityLabel="Copy puzzle notation to clipboard"
+                accessibilityRole="button"
+              >
+                <Text style={styles.debugToastLabel}>{notationCopied ? 'Copied' : 'Copy'}</Text>
+                <Text style={[styles.debugToastValue, notationCopied && styles.hintLabelActive]}>
+                  {notationCopied ? '✓' : 'Clipboard'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </>
       )}
@@ -608,6 +668,7 @@ const styles = StyleSheet.create({
     right: 8,
     zIndex: 15,
     minWidth: 200,
+    maxWidth: Math.min(360, SCREEN_WIDTH - 24),
     backgroundColor: colors.surface,
     borderRadius: 12,
     paddingVertical: 10,
@@ -641,6 +702,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  debugNotationBlock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E0E0E0',
+    paddingTop: 8,
+    marginTop: 2,
+  },
+  debugNotationLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  debugNotationScroll: {
+    maxHeight: 120,
+    marginBottom: 2,
+  },
+  debugNotationText: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 11,
+    color: colors.textPrimary,
+    lineHeight: 15,
   },
   modeText: {
     fontSize: 16,

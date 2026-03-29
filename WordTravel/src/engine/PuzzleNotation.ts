@@ -128,7 +128,15 @@ function isCombining(code: number): boolean {
   return code >= 0x0300 && code <= 0x036f;
 }
 
-export function parseGrid(notation: string): Grid {
+export interface ParseGridOptions {
+  /**
+   * When true, `a`–`z` are player-filled (non-fixed); `A`–`Z` stay givens. Matches {@link serializeGridDebug}.
+   */
+  lowercaseLettersAsPlayerFill?: boolean;
+}
+
+export function parseGrid(notation: string, options?: ParseGridOptions): Grid {
+  const debugCase = options?.lowercaseLettersAsPlayerFill === true;
   const lines = notation.split('\n');
   const charGrid = lines.map(line => graphemeClusters(line));
   const cols = Math.max(...charGrid.map(row => row.length));
@@ -151,14 +159,25 @@ export function parseGrid(notation: string): Grid {
       const rule = combining ? ruleFromCombiningMarks(combining, r, c) : undefined;
 
       if (isLetter) {
-        cells[r][c] = {
-          letter: base.toUpperCase(),
-          state: 'locked',
-          accessible: true,
-          validation: 'correct',
-          fixed: true,
-          ruleTile: rule,
-        };
+        const upper = base.toUpperCase();
+        const isPlayerFill = debugCase && /^[a-z]$/.test(base);
+        cells[r][c] = isPlayerFill
+          ? {
+              letter: upper,
+              state: 'filled',
+              accessible: true,
+              validation: 'none',
+              fixed: false,
+              ruleTile: rule,
+            }
+          : {
+              letter: upper,
+              state: 'locked',
+              accessible: true,
+              validation: 'correct',
+              fixed: true,
+              ruleTile: rule,
+            };
       } else {
         cells[r][c] = {
           letter: null,
@@ -215,6 +234,52 @@ export function serializeGrid(grid: Grid): string {
         line += (cell.letter!.toUpperCase() + combining).normalize('NFC');
       } else if (hasLetter) {
         line += cell.letter!.toUpperCase();
+      } else if (combining) {
+        if (combining === COMBINING_CIRCUMFLEX) line += STANDALONE_HARD;
+        else if (combining === COMBINING_TILDE) line += STANDALONE_SOFT;
+        else if (combining === COMBINING_DIAERESIS) line += STANDALONE_FORBIDDEN;
+        else line += ('.' + combining).normalize('NFC');
+      } else {
+        line += '.';
+      }
+    }
+
+    lines.push(line);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Like {@link serializeGrid} but includes any cell letter. Fixed givens stay uppercase; player-filled
+ * letters (non-fixed) use lowercase. Rule tiles and spacing match {@link serializeGrid}.
+ */
+export function serializeGridDebug(grid: Grid): string {
+  const lines: string[] = [];
+
+  for (let r = 0; r < grid.rows; r++) {
+    let line = '';
+    for (let c = 0; c < grid.cols; c++) {
+      const cell = grid.cells[r][c];
+
+      if (!cell.accessible) {
+        line += ' ';
+        continue;
+      }
+
+      const rule = cell.ruleTile;
+      const combining = rule ? combiningFromRule(rule) : null;
+      const hasLetter = Boolean(cell.letter);
+      const letterGlyph = hasLetter
+        ? cell.fixed
+          ? cell.letter!.toUpperCase()
+          : cell.letter!.toLowerCase()
+        : '';
+
+      if (hasLetter && combining) {
+        line += (letterGlyph + combining).normalize('NFC');
+      } else if (hasLetter) {
+        line += letterGlyph;
       } else if (combining) {
         if (combining === COMBINING_CIRCUMFLEX) line += STANDALONE_HARD;
         else if (combining === COMBINING_TILDE) line += STANDALONE_SOFT;

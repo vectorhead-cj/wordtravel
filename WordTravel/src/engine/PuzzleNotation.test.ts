@@ -1,4 +1,4 @@
-import { parseGrid, serializeGrid, addPadding } from './PuzzleNotation';
+import { parseGrid, serializeGrid, serializeGridDebug, addPadding } from './PuzzleNotation';
 
 describe('PuzzleNotation', () => {
   describe('parseGrid', () => {
@@ -40,6 +40,19 @@ describe('PuzzleNotation', () => {
         expect(grid.cells[0][c].validation).toBe('correct');
         expect(grid.cells[0][c].accessible).toBe(true);
       }
+    });
+
+    it('should treat lowercase as player fill when lowercaseLettersAsPlayerFill is set', () => {
+      const grid = parseGrid('a', { lowercaseLettersAsPlayerFill: true });
+      expect(grid.cells[0][0].letter).toBe('A');
+      expect(grid.cells[0][0].fixed).toBe(false);
+      expect(grid.cells[0][0].state).toBe('filled');
+    });
+
+    it('should treat uppercase as fixed when lowercaseLettersAsPlayerFill is set', () => {
+      const grid = parseGrid('A', { lowercaseLettersAsPlayerFill: true });
+      expect(grid.cells[0][0].fixed).toBe(true);
+      expect(grid.cells[0][0].state).toBe('locked');
     });
 
     it('should parse ^ as hard match top tile', () => {
@@ -257,6 +270,23 @@ describe('PuzzleNotation', () => {
         ' DOG ',
       ].join('\n');
       expect(serializeGrid(parseGrid(input))).toBe(input);
+    });
+  });
+
+  describe('serializeGridDebug', () => {
+    it('should match serializeGrid when only fixed letters differ from empty', () => {
+      const input = '^.~.\n....\n.¨..';
+      const grid = parseGrid(input);
+      expect(serializeGridDebug(grid)).toBe(serializeGrid(grid));
+    });
+
+    it('should emit non-fixed filled letters as lowercase', () => {
+      const grid = parseGrid('...');
+      grid.cells[0][1].letter = 'X';
+      grid.cells[0][1].state = 'filled';
+      grid.cells[0][1].fixed = false;
+      expect(serializeGrid(grid)).toBe('...');
+      expect(serializeGridDebug(grid)).toBe('.x.');
     });
   });
 

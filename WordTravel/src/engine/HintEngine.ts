@@ -83,35 +83,43 @@ function getMatchingWordsForRow(grid: Grid, targetRow: number): string[] {
 
       const requiredInDest = new Set<string>();
 
-      for (const destCell of destRowCells) {
-        if (!destCell.accessible) continue;
-
-        if (destCell.fixed && destCell.letter) {
-          requiredInDest.add(destCell.letter.toLowerCase());
-        } else if (destCell.ruleTile?.type === 'hardMatch') {
-          const { pairedRow, pairedCol } = destCell.ruleTile.constraint;
-          const pairedCell = grid.cells[pairedRow]?.[pairedCol];
-          if (pairedCell?.letter) {
-            requiredInDest.add(pairedCell.letter.toLowerCase());
-          } else if (pairedRow === targetRow) {
-            const required = colToHardMatchLetter.get(pairedCol);
-            if (required) requiredInDest.add(required);
+      if (isRowComplete(grid, destRow)) {
+        for (const destCell of destRowCells) {
+          if (destCell.accessible && destCell.letter) {
+            requiredInDest.add(destCell.letter.toLowerCase());
           }
         }
-      }
+      } else {
+        for (const destCell of destRowCells) {
+          if (!destCell.accessible) continue;
 
-      for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
-        if (!isRowComplete(grid, sourceRow)) continue;
-        for (let sourceCol = 0; sourceCol < grid.cols; sourceCol++) {
-          const sourceCell = grid.cells[sourceRow][sourceCol];
-          const sc = sourceCell.ruleTile?.type === 'softMatch' ? sourceCell.ruleTile.constraint : null;
-          if (
-            sourceCell.accessible &&
-            sc &&
-            softForbiddenTargetRows(sc).includes(destRow) &&
-            sourceCell.letter
-          ) {
-            requiredInDest.add(sourceCell.letter.toLowerCase());
+          if (destCell.fixed && destCell.letter) {
+            requiredInDest.add(destCell.letter.toLowerCase());
+          } else if (destCell.ruleTile?.type === 'hardMatch') {
+            const { pairedRow, pairedCol } = destCell.ruleTile.constraint;
+            const pairedCell = grid.cells[pairedRow]?.[pairedCol];
+            if (pairedCell?.letter) {
+              requiredInDest.add(pairedCell.letter.toLowerCase());
+            } else if (pairedRow === targetRow) {
+              const required = colToHardMatchLetter.get(pairedCol);
+              if (required) requiredInDest.add(required);
+            }
+          }
+        }
+
+        for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+          if (!isRowComplete(grid, sourceRow)) continue;
+          for (let sourceCol = 0; sourceCol < grid.cols; sourceCol++) {
+            const sourceCell = grid.cells[sourceRow][sourceCol];
+            const sc = sourceCell.ruleTile?.type === 'softMatch' ? sourceCell.ruleTile.constraint : null;
+            if (
+              sourceCell.accessible &&
+              sc &&
+              softForbiddenTargetRows(sc).includes(destRow) &&
+              sourceCell.letter
+            ) {
+              requiredInDest.add(sourceCell.letter.toLowerCase());
+            }
           }
         }
       }

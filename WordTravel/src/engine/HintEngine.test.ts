@@ -118,6 +118,31 @@ describe('HintEngine', () => {
         expect(result.examples).not.toContain('away');
       });
 
+      it('excludes letters that appear anywhere in a complete bottom row even when cells are not marked fixed', () => {
+        const hardMatchRow1: HardMatchTile = {
+          type: 'hardMatch',
+          constraint: { pairedRow: 0, pairedCol: 0, position: 'bottom' },
+        };
+        const forbiddenToRow2: ForbiddenMatchTile = {
+          type: 'forbiddenMatch',
+          constraint: { nextRow: 2 },
+        };
+
+        const grid = createGrid([
+          [createCell('A'), createCell('N'), createCell('T'), createCell('S')],
+          [createCell(null, true, hardMatchRow1), createCell(null), createCell(null, true, forbiddenToRow2), createCell(null)],
+          [createCell('A'), createCell('N'), createCell('T'), createCell('S')],
+        ]);
+
+        const result = getValidNextWords(grid, 1, 1000);
+        expect(result.count).toBeGreaterThan(0);
+        const bannedAtForbiddenPos = new Set(['a', 'n', 't', 's']);
+        for (const w of result.examples) {
+          expect(bannedAtForbiddenPos.has(w[2])).toBe(false);
+        }
+        expect(result.examples).not.toContain('away');
+      });
+
       it('does NOT filter words when the forbiddenMatch letter does not conflict with the next row', () => {
         // Row 2 has no constraints, so nothing is required there.
         // ALSO should be a valid suggestion (it starts with 'A' as required).

@@ -64,7 +64,6 @@ export function useGridInput({
   onBackspaceApplied,
 }: UseGridInputParams) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [validationFailedRow, setValidationFailedRow] = useState<number | null>(null);
 
   const currentPosition = useMemo(() => findFirstEmptyCell(grid, mode), [grid, mode]);
 
@@ -75,7 +74,6 @@ export function useGridInput({
 
   const handleKeyPress = useCallback((text: string) => {
     if (readOnly) return;
-    if (validationFailedRow !== null) return;
     if (!text || text.length === 0 || !currentPosition) return;
 
     const letter = text.slice(-1).toUpperCase();
@@ -95,35 +93,14 @@ export function useGridInput({
       onRowValidated(currentPosition.row, isValid);
 
       if (!isValid) {
-        setValidationFailedRow(currentPosition.row);
         showError(getErrorMessage(validationState));
       }
     }
-  }, [readOnly, grid, mode, currentPosition, validationFailedRow, onGridChange, onRowValidated, showError]);
+  }, [readOnly, grid, mode, currentPosition, onGridChange, onRowValidated, showError]);
 
   const handleBackspace = useCallback(() => {
     if (readOnly) return;
     const newGrid = cloneGrid(grid);
-
-    if (validationFailedRow !== null) {
-      for (let col = 0; col < newGrid.cols; col++) {
-        if (newGrid.cells[validationFailedRow][col].accessible) {
-          newGrid.cells[validationFailedRow][col].validation = 'none';
-        }
-      }
-      for (let col = newGrid.cols - 1; col >= 0; col--) {
-        const cell = newGrid.cells[validationFailedRow][col];
-        if (cell.accessible && cell.letter && !cell.fixed) {
-          cell.letter = '';
-          cell.state = 'empty';
-          break;
-        }
-      }
-      setValidationFailedRow(null);
-      onGridChange(newGrid);
-      onBackspaceApplied?.();
-      return;
-    }
 
     const target = findLastFilledCell(grid, mode, currentPosition);
     if (!target) return;
@@ -133,12 +110,11 @@ export function useGridInput({
 
     onGridChange(newGrid);
     onBackspaceApplied?.();
-  }, [readOnly, grid, mode, currentPosition, validationFailedRow, onGridChange, onBackspaceApplied]);
+  }, [readOnly, grid, mode, currentPosition, onGridChange, onBackspaceApplied]);
 
   return {
     currentPosition,
     errorMessage,
-    validationFailed: validationFailedRow !== null,
     handleKeyPress,
     handleBackspace,
   };

@@ -52,7 +52,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   const scrollViewRef = useRef<ScrollView>(null);
   const [gridAreaLayout, setGridAreaLayout] = useState<{ width: number; height: number } | null>(null);
 
-  const { currentPosition, errorMessage, validationFailed, handleKeyPress, handleBackspace } = useGridInput({
+  const { currentPosition, errorMessage, handleKeyPress, handleBackspace } = useGridInput({
     grid,
     mode,
     readOnly,
@@ -126,7 +126,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   }, [mode, gridAreaLayout, activeBounds]);
 
   useEffect(() => {
-    if (mode === 'puzzle' || !currentPosition || validationFailed) return;
+    if (mode === 'puzzle' || !currentPosition) return;
     const screenHeight = Dimensions.get('window').height;
     const rowYPosition = (currentPosition.row - activeBounds.minRow) * cellSize;
     const screenMiddle = screenHeight * 0.5;
@@ -135,7 +135,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
       const targetY = rowYPosition - screenHeight * 0.45;
       scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY), animated: true });
     }
-  }, [mode, currentPosition, cellSize, validationFailed, activeBounds.minRow]);
+  }, [mode, currentPosition, cellSize, activeBounds.minRow]);
 
   const renderGridContent = () => {
     const { minRow, maxRow, minCol, activeCols } = activeBounds;
