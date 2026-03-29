@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TextInput, Text, StyleSheet } from 'react-native';
 import { Cell } from '../engine/types';
+import { RuleFulfillment } from '../engine/GameLogic';
 import { colors, layout } from '../theme';
 import { ModifierOverlay } from './ModifierOverlay';
 
@@ -10,11 +11,11 @@ interface CellViewProps {
   tileSize: number;
   ghostLetter?: string;
   active?: boolean;
-  modifierColor?: string;
+  modifierFulfillment?: RuleFulfillment;
   modifierRotation?: 0 | 180;
 }
 
-export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifierColor, modifierRotation }: CellViewProps) {
+export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifierFulfillment, modifierRotation }: CellViewProps) {
   if (!cell.accessible) {
     return <View style={{ width: cellSize, height: cellSize }} />;
   }
@@ -33,8 +34,12 @@ export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifi
         cell.fixed && { backgroundColor: colors.background },
         active && { borderColor: colors.tileBorderActive },
       ]}>
-        {showModifier && ruleTile && modifierColor && (
-          <ModifierOverlay ruleType={ruleTile.type} color={modifierColor} rotation={modifierRotation ?? 0} />
+        {showModifier && ruleTile && modifierFulfillment != null && (
+          <ModifierOverlay
+            ruleType={ruleTile.type}
+            fulfillment={modifierFulfillment}
+            rotation={modifierRotation ?? 0}
+          />
         )}
         <View style={styles.cellContent}>
           {cell.letter ? (

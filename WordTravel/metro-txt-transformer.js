@@ -1,11 +1,12 @@
 const upstreamTransformer = require('@react-native/metro-babel-transformer');
+const svgTransformer = require('react-native-svg-transformer');
 const crypto = require('crypto');
 const fs = require('fs');
 
 const cacheKeyParts = [fs.readFileSync(__filename)];
 
 module.exports = {
-  transform({src, filename, options}) {
+  async transform({ src, filename, options }) {
     if (filename.endsWith('.txt')) {
       return upstreamTransformer.transform({
         src: `export default ${JSON.stringify(src)};`,
@@ -13,7 +14,10 @@ module.exports = {
         options,
       });
     }
-    return upstreamTransformer.transform({src, filename, options});
+    if (filename.endsWith('.svg')) {
+      return svgTransformer.transform({ src, filename, options });
+    }
+    return upstreamTransformer.transform({ src, filename, options });
   },
 
   getCacheKey() {
