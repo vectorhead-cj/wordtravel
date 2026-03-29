@@ -34,6 +34,28 @@ export function isBidirectionalSoftForbidden(
   return tile.constraint.nextRow !== undefined && tile.constraint.prevRow !== undefined;
 }
 
+/** Row index of the bottom playable word line (last word slot). */
+export function lastWordSlotRow(config: PuzzleConfig): number {
+  if (config.wordSlots.length === 0) {
+    throw new Error('PuzzleConfig has no word slots');
+  }
+  return config.wordSlots[config.wordSlots.length - 1].row;
+}
+
+/**
+ * ModifierOverlay rotation for a unidirectional soft/forbidden tile.
+ * 0 = default glyph direction (constraint toward next row); 180 = toward previous row.
+ * Bidirectional tiles use stacked overlays in CellView — returns undefined.
+ */
+export function softForbiddenUnidirectionalRotation(
+  tile: SoftMatchTile | ForbiddenMatchTile,
+): 0 | 180 | undefined {
+  if (isBidirectionalSoftForbidden(tile)) return undefined;
+  if (tile.constraint.prevRow !== undefined) return 180;
+  if (tile.constraint.nextRow !== undefined) return 0;
+  return undefined;
+}
+
 export interface SoftMatchTile {
   type: 'softMatch';
   constraint: SoftForbiddenConstraint;

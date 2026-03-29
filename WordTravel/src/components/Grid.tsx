@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
-import { Grid as GridType, GameMode, HintLevel } from '../engine/types';
+import { Grid as GridType, GameMode, HintLevel, softForbiddenUnidirectionalRotation } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
 import { computeRuleFulfillment } from '../engine/GameLogic';
 import { countValidNextWords, getValidNextWords } from '../engine/HintEngine';
@@ -160,9 +160,15 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                     ? computeRuleFulfillment(grid, rowIndex, colIndex)
                     : undefined;
                   const modifierFulfillment = cell.ruleTile ? fulfillment : undefined;
-                  const modifierRotation: 0 | 180 =
-                    cell.ruleTile?.type === 'hardMatch' && cell.ruleTile.constraint.position === 'bottom'
-                      ? 180 : 0;
+                  const modifierRotation: 0 | 180 = (() => {
+                    const rt = cell.ruleTile;
+                    if (rt?.type === 'hardMatch' && rt.constraint.position === 'bottom') return 180;
+                    if (rt?.type === 'softMatch' || rt?.type === 'forbiddenMatch') {
+                      const r = softForbiddenUnidirectionalRotation(rt);
+                      if (r !== undefined) return r;
+                    }
+                    return 0;
+                  })();
 
                   return (
                     <CellView

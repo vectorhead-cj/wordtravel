@@ -10,6 +10,7 @@ import {
   ForbiddenMatchTile,
   SoftForbiddenConstraint,
   softForbiddenTargetRows,
+  lastWordSlotRow,
 } from './types';
 import { PUZZLE_CONFIG, GENERATION_PROFILES, GenerationProfile } from './config';
 import { generatorDictionary, ConstraintQuery } from './Dictionary';
@@ -238,7 +239,9 @@ export class PuzzleGenerator {
       const currentCell = grid.cells[randomRow][randomCol];
       if (!currentCell.accessible || currentCell.ruleTile) continue;
 
-      const hasNext =
+      const lastWordRow = lastWordSlotRow(config);
+      const canPointDown =
+        randomRow < lastWordRow &&
         randomRow + 1 < config.rows &&
         grid.cells[randomRow + 1].some(cell => cell.accessible);
       const hasPrev =
@@ -247,13 +250,13 @@ export class PuzzleGenerator {
       let constraint: SoftForbiddenConstraint;
 
       if (difficulty !== 'hard') {
-        if (!hasNext) continue;
+        if (!canPointDown) continue;
         constraint = { nextRow: randomRow + 1 };
       } else {
         const modes: SoftForbiddenConstraint[] = [];
-        if (hasNext) modes.push({ nextRow: randomRow + 1 });
+        if (canPointDown) modes.push({ nextRow: randomRow + 1 });
         if (hasPrev) modes.push({ prevRow: randomRow - 1 });
-        if (hasNext && hasPrev) modes.push({ nextRow: randomRow + 1, prevRow: randomRow - 1 });
+        if (canPointDown && hasPrev) modes.push({ nextRow: randomRow + 1, prevRow: randomRow - 1 });
         if (modes.length === 0) continue;
         constraint = modes[Math.floor(Math.random() * modes.length)];
       }
@@ -292,7 +295,9 @@ export class PuzzleGenerator {
       const currentCell = grid.cells[randomRow][randomCol];
       if (!currentCell.accessible || currentCell.ruleTile) continue;
 
-      const hasNext =
+      const lastWordRow = lastWordSlotRow(config);
+      const canPointDown =
+        randomRow < lastWordRow &&
         randomRow + 1 < config.rows &&
         grid.cells[randomRow + 1].some(cell => cell.accessible);
       const hasPrev =
@@ -301,13 +306,13 @@ export class PuzzleGenerator {
       let constraint: SoftForbiddenConstraint;
 
       if (difficulty !== 'hard') {
-        if (!hasNext) continue;
+        if (!canPointDown) continue;
         constraint = { nextRow: randomRow + 1 };
       } else {
         const modes: SoftForbiddenConstraint[] = [];
-        if (hasNext) modes.push({ nextRow: randomRow + 1 });
+        if (canPointDown) modes.push({ nextRow: randomRow + 1 });
         if (hasPrev) modes.push({ prevRow: randomRow - 1 });
-        if (hasNext && hasPrev) modes.push({ nextRow: randomRow + 1, prevRow: randomRow - 1 });
+        if (canPointDown && hasPrev) modes.push({ nextRow: randomRow + 1, prevRow: randomRow - 1 });
         if (modes.length === 0) continue;
         constraint = modes[Math.floor(Math.random() * modes.length)];
       }
@@ -349,6 +354,8 @@ export class PuzzleGenerator {
     const min = profile.minRuleTilesPerWord;
     if (min <= 0) return;
 
+    const lastWordRow = lastWordSlotRow(config);
+
     for (const slot of config.wordSlots) {
       let deficit = min - this.countRuleTilesInRow(grid, slot.row);
 
@@ -374,9 +381,12 @@ export class PuzzleGenerator {
           }
         }
 
-        // Try ○ with the next row
-        if (slot.row + 1 < grid.rows &&
-            grid.cells[slot.row + 1].some(c => c.accessible)) {
+        // Try ○ with the next row (never on the bottom word row — no row below to play)
+        if (
+          slot.row < lastWordRow &&
+          slot.row + 1 < grid.rows &&
+          grid.cells[slot.row + 1].some(c => c.accessible)
+        ) {
           const trivial = cell.fixed && cell.letter &&
             grid.cells[slot.row + 1].some(
               tc => tc.accessible && tc.fixed && tc.letter === cell.letter,

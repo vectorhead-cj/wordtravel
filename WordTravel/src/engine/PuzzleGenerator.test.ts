@@ -1,7 +1,7 @@
 import { PuzzleGenerator } from './PuzzleGenerator';
 import { parseGrid, serializeGrid } from './PuzzleNotation';
 import { generatorDictionary } from './Dictionary';
-import { Grid, PuzzleType, Difficulty, softForbiddenTargetRows } from './types';
+import { Grid, PuzzleType, Difficulty, PuzzleConfig, lastWordSlotRow, softForbiddenTargetRows } from './types';
 import {
   validateHardMatchTiles,
   validateSoftMatchTiles,
@@ -267,6 +267,29 @@ describe('PuzzleGenerator', () => {
   });
 
   describe('soft/forbidden direction gating', () => {
+    function generateValidGridAndConfig(
+      puzzleType: PuzzleType,
+      difficulty: Difficulty,
+    ): { grid: Grid; config: PuzzleConfig } {
+      const gen = new PuzzleGenerator();
+      const maxAttempts = difficulty === 'hard' ? 300 : 50;
+      for (let i = 0; i < maxAttempts; i++) {
+        const config = gen.generatePuzzleConfig(0, 0, puzzleType);
+        const grid = gen.createGridFromConfig(config, puzzleType, difficulty);
+        if (gen.isGridValid(grid)) return { grid, config };
+      }
+      throw new Error(`Failed to generate valid ${puzzleType}/${difficulty} grid`);
+    }
+
+    function assertNoNextRowSoftForbiddenOnRow(grid: Grid, row: number): void {
+      for (let c = 0; c < grid.cols; c++) {
+        const t = grid.cells[row][c].ruleTile;
+        if (t?.type === 'softMatch' || t?.type === 'forbiddenMatch') {
+          expect(t.constraint.nextRow).toBeUndefined();
+        }
+      }
+    }
+
     it('never sets prevRow on soft or forbidden tiles for easy and medium', () => {
       for (const difficulty of ['easy', 'medium'] as const) {
         for (let i = 0; i < 150; i++) {
@@ -281,6 +304,53 @@ describe('PuzzleGenerator', () => {
           }
         }
       }
+    });
+
+    describe('last word row must not use nextRow (downward constraint)', () => {
+      const HARD_ITERS_PER_MODE = 400;
+
+      it.each(['open', 'bridge', 'semi'] as const)(
+        'hard %s: fresh grid — no nextRow on lastWordSlotRow(config)',
+        puzzleType => {
+          for (let i = 0; i < HARD_ITERS_PER_MODE; i++) {
+            const { grid, config } = generateValidGridAndConfig(puzzleType, 'hard');
+            assertNoNextRowSoftForbiddenOnRow(grid, lastWordSlotRow(config));
+          }
+        },
+      );
+
+      it.each(['open', 'bridge', 'semi'] as const)(
+        'hard %s: after serialize → parse — same bottom row index and still no nextRow there',
+        puzzleType => {
+          for (let i = 0; i < HARD_ITERS_PER_MODE; i++) {
+            const { grid, config } = generateValidGridAndConfig(puzzleType, 'hard');
+            const bottom = lastWordSlotRow(config);
+            const parsed = parseGrid(serializeGrid(grid));
+            const topologyBottom = findWordRows(parsed);
+            expect(topologyBottom[topologyBottom.length - 1]).toBe(bottom);
+            assertNoNextRowSoftForbiddenOnRow(parsed, bottom);
+          }
+        },
+      );
+
+      it('easy and medium (open): no nextRow on config bottom word row', () => {
+        for (const difficulty of ['easy', 'medium'] as const) {
+          for (let i = 0; i < 200; i++) {
+            const { grid, config } = generateValidGridAndConfig('open', difficulty);
+            assertNoNextRowSoftForbiddenOnRow(grid, lastWordSlotRow(config));
+          }
+        }
+      });
+
+      it('hard open: topology bottom row matches config and has no downward soft/forbidden', () => {
+        for (let i = 0; i < 500; i++) {
+          const { grid, config } = generateValidGridAndConfig('open', 'hard');
+          const fromConfig = lastWordSlotRow(config);
+          const fromTopology = findWordRows(grid);
+          expect(fromTopology[fromTopology.length - 1]).toBe(fromConfig);
+          assertNoNextRowSoftForbiddenOnRow(grid, fromConfig);
+        }
+      });
     });
 
     it('sometimes sets prevRow on soft or forbidden for hard', () => {
