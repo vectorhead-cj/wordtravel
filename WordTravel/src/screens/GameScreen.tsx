@@ -1,5 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Easing,
+  Dimensions,
+  Pressable,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GameMode, GameResult, PuzzleType, Difficulty, Grid as GridType, HintLevel, SolveMode, cloneGrid } from '../engine/types';
 import { Grid, GridHandle } from '../components/Grid';
@@ -109,6 +118,7 @@ export function GameScreen({
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
   const [headerBarHeight, setHeaderBarHeight] = useState(56);
+  const [debugToastOpen, setDebugToastOpen] = useState(false);
 
   // ---- completion state & animation ----
   const [completedResult, setCompletedResult] = useState<GameResult | null>(null);
@@ -340,6 +350,12 @@ export function GameScreen({
 
   const isCompleted = completedResult != null;
 
+  useEffect(() => {
+    if (isCompleted) {
+      setDebugToastOpen(false);
+    }
+  }, [isCompleted]);
+
   return (
     <View style={styles.container}>
       <Grid
@@ -380,22 +396,62 @@ export function GameScreen({
           </View>
 
           <View style={[styles.headerSide, styles.headerSideEnd]}>
-            <TouchableOpacity style={styles.headerButton} onPress={cycleHintLevel} hitSlop={8}>
-              <Text style={[styles.hintLabel, hintLevel !== 'off' && styles.hintLabelActive]}>
-                {hintLevel === 'off' ? 'OFF' : hintLevel === 'count' ? '#' : 'Ex'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton} onPress={toggleSolveMode} hitSlop={8}>
-              <Text style={[styles.hintLabel, solveMode === 'solve' && styles.hintLabelActive]}>
-                {solveMode === 'off' ? 'OFF' : 'SLV'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton} onPress={handleAutoSolve} hitSlop={8}>
-              <Text style={styles.hintLabel}>END</Text>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => setDebugToastOpen(v => !v)}
+              hitSlop={8}
+              accessibilityLabel="Debug tools"
+            >
+              <Text style={styles.settingsIcon}>⚙</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Animated.View>
+
+      {debugToastOpen && !isCompleted && (
+        <>
+          <Pressable
+            style={styles.debugToastBackdrop}
+            onPress={() => setDebugToastOpen(false)}
+            accessibilityLabel="Dismiss debug menu"
+          />
+          <View style={[styles.debugToast, { top: headerBarHeight + 4 }]} pointerEvents="box-none">
+            <Text style={styles.debugToastTitle}>Debug</Text>
+            <TouchableOpacity
+              style={styles.debugToastRow}
+              onPress={() => {
+                cycleHintLevel();
+              }}
+            >
+              <Text style={styles.debugToastLabel}>Hint</Text>
+              <Text style={[styles.debugToastValue, hintLevel !== 'off' && styles.hintLabelActive]}>
+                {hintLevel === 'off' ? 'OFF' : hintLevel === 'count' ? '#' : 'Ex'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.debugToastRow}
+              onPress={() => {
+                toggleSolveMode();
+              }}
+            >
+              <Text style={styles.debugToastLabel}>Solve overlay</Text>
+              <Text style={[styles.debugToastValue, solveMode === 'solve' && styles.hintLabelActive]}>
+                {solveMode === 'off' ? 'OFF' : 'SLV'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.debugToastRow}
+              onPress={() => {
+                handleAutoSolve();
+                setDebugToastOpen(false);
+              }}
+            >
+              <Text style={styles.debugToastLabel}>Autosolve</Text>
+              <Text style={styles.debugToastValue}>Run</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
       {/* Results overlay — fixed-height layout, no flex guessing */}
       {isCompleted && (
@@ -529,6 +585,11 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: '600',
   },
+  settingsIcon: {
+    fontSize: 22,
+    color: colors.textPrimary,
+    lineHeight: 26,
+  },
   hintLabel: {
     fontSize: 12,
     color: colors.textMuted,
@@ -536,6 +597,50 @@ const styles = StyleSheet.create({
   },
   hintLabelActive: {
     color: colors.accent,
+  },
+  debugToastBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 14,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+  },
+  debugToast: {
+    position: 'absolute',
+    right: 8,
+    zIndex: 15,
+    minWidth: 200,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#4A4A4A',
+    ...barShadow,
+  },
+  debugToastTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.6,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  debugToastRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E0E0E0',
+  },
+  debugToastLabel: {
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  debugToastValue: {
+    fontSize: 14,
+    color: colors.textMuted,
+    fontWeight: '600',
   },
   modeText: {
     fontSize: 16,
