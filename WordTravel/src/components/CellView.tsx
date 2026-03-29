@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, TextInput, Text, StyleSheet } from 'react-native';
-import { Cell } from '../engine/types';
+import { View, TextInput, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Cell, isBidirectionalSoftForbidden } from '../engine/types';
 import { RuleFulfillment } from '../engine/GameLogic';
 import { colors, layout } from '../theme';
+import { BIDIRECTIONAL_MODIFIER_OFFSET_PX } from '../tileTheme';
 import { ModifierOverlay } from './ModifierOverlay';
 
 interface CellViewProps {
@@ -35,11 +36,31 @@ export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifi
         active && { borderColor: colors.tileBorderActive },
       ]}>
         {showModifier && ruleTile && modifierFulfillment != null && (
-          <ModifierOverlay
-            ruleType={ruleTile.type}
-            fulfillment={modifierFulfillment}
-            rotation={modifierRotation ?? 0}
-          />
+          (ruleTile.type === 'softMatch' || ruleTile.type === 'forbiddenMatch') &&
+          isBidirectionalSoftForbidden(ruleTile) ? (
+            <View style={styles.modifierStack} pointerEvents="none">
+              <View style={bidirectionalDownLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}>
+                <ModifierOverlay
+                  ruleType={ruleTile.type}
+                  fulfillment={modifierFulfillment}
+                  rotation={0}
+                />
+              </View>
+              <View style={bidirectionalUpLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}>
+                <ModifierOverlay
+                  ruleType={ruleTile.type}
+                  fulfillment={modifierFulfillment}
+                  rotation={180}
+                />
+              </View>
+            </View>
+          ) : (
+            <ModifierOverlay
+              ruleType={ruleTile.type}
+              fulfillment={modifierFulfillment}
+              rotation={modifierRotation ?? 0}
+            />
+          )
         )}
         <View style={styles.cellContent}>
           {cell.letter ? (
@@ -70,6 +91,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
+  modifierStack: {
+    ...StyleSheet.absoluteFillObject,
+  },
   cellContent: {
     width: '100%',
     height: '100%',
@@ -96,4 +120,20 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
+function bidirectionalDownLayerStyle(offsetPx: number): ViewStyle {
+  if (offsetPx === 0) return styles.modifierStack;
+  return {
+    ...StyleSheet.absoluteFillObject,
+    transform: [{ translateY: offsetPx }],
+  };
+}
+
+function bidirectionalUpLayerStyle(offsetPx: number): ViewStyle {
+  if (offsetPx === 0) return styles.modifierStack;
+  return {
+    ...StyleSheet.absoluteFillObject,
+    transform: [{ translateY: -offsetPx }],
+  };
+}
 

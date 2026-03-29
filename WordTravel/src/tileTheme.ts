@@ -11,7 +11,10 @@ import ModifierTriangle from './assets/svg/modifier_triangle.svg';
 
 export type ModifierStyle = 'varied' | 'rectangle' | 'triangle';
 
-export const MODIFIER_STYLE: ModifierStyle = 'rectangle';
+export const MODIFIER_STYLE: ModifierStyle = 'triangle';
+
+/** Shifts bidirectional soft/forbidden: down rule toward bottom, up rule toward top (px). Use 0 to overlap. */
+export const BIDIRECTIONAL_MODIFIER_OFFSET_PX = 0;
 
 export const TileTheme = {
   colors: {

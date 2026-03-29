@@ -1,4 +1,16 @@
-import { Grid, Cell, PuzzleConfig, WordSlot, PuzzleType, Difficulty, HardMatchTile, SoftMatchTile, ForbiddenMatchTile } from './types';
+import {
+  Grid,
+  Cell,
+  PuzzleConfig,
+  WordSlot,
+  PuzzleType,
+  Difficulty,
+  HardMatchTile,
+  SoftMatchTile,
+  ForbiddenMatchTile,
+  SoftForbiddenConstraint,
+  softForbiddenTargetRows,
+} from './types';
 import { PUZZLE_CONFIG, GENERATION_PROFILES, GenerationProfile } from './config';
 import { generatorDictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
@@ -94,9 +106,9 @@ export class PuzzleGenerator {
     this.prefillFixedWords(grid, config, puzzleType);
     this.placeFixedLetterTiles(grid, profile);
     this.placeHardMatchTiles(grid, config, profile);
-    this.placeSoftMatchTiles(grid, config, profile);
-    this.placeForbiddenMatchTiles(grid, config, profile);
-    this.ensureMinimumRuleTiles(grid, config, profile);
+    this.placeSoftMatchTiles(grid, config, profile, difficulty);
+    this.placeForbiddenMatchTiles(grid, config, profile, difficulty);
+    this.ensureMinimumRuleTiles(grid, config, profile, difficulty);
     
     return grid;
   }
@@ -182,45 +194,90 @@ export class PuzzleGenerator {
     }
   }
   
-  private placeSoftMatchTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+  private isTrivialSoftConstraint(
+    grid: Grid,
+    letter: string,
+    constraint: SoftForbiddenConstraint,
+  ): boolean {
+    if (
+      constraint.nextRow !== undefined &&
+      grid.cells[constraint.nextRow].some(
+        tc => tc.accessible && tc.fixed && tc.letter === letter,
+      )
+    ) {
+      return true;
+    }
+    if (
+      constraint.prevRow !== undefined &&
+      grid.cells[constraint.prevRow].some(
+        tc => tc.accessible && tc.fixed && tc.letter === letter,
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private placeSoftMatchTiles(
+    grid: Grid,
+    config: PuzzleConfig,
+    profile: GenerationProfile,
+    difficulty: Difficulty,
+  ): void {
     const targetTiles = profile.softMatchTiles;
     let placedTiles = 0;
     const maxAttempts = 100;
     let attempts = 0;
-    
+
     while (placedTiles < targetTiles && attempts < maxAttempts) {
       attempts++;
-      
-      const randomRow = Math.floor(Math.random() * (config.rows - 2));
-      const randomCol = Math.floor(Math.random() * config.cols);
-      
-      const currentCell = grid.cells[randomRow][randomCol];
-      const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
-      const trivialSoftMatch = currentCell.fixed && currentCell.letter &&
-        grid.cells[randomRow + 1].some(
-          tc => tc.accessible && tc.fixed && tc.letter === currentCell.letter,
-        );
 
-      if (
-        currentCell.accessible &&
-        !currentCell.ruleTile &&
-        hasAccessibleNextRow &&
-        !trivialSoftMatch
-      ) {
-        const tile: SoftMatchTile = {
-          type: 'softMatch',
-          constraint: {
-            nextRow: randomRow + 1,
-          },
-        };
-        
-        grid.cells[randomRow][randomCol].ruleTile = tile;
-        placedTiles++;
+      const randomRow = Math.floor(Math.random() * config.rows);
+      const randomCol = Math.floor(Math.random() * config.cols);
+
+      const currentCell = grid.cells[randomRow][randomCol];
+      if (!currentCell.accessible || currentCell.ruleTile) continue;
+
+      const hasNext =
+        randomRow + 1 < config.rows &&
+        grid.cells[randomRow + 1].some(cell => cell.accessible);
+      const hasPrev =
+        randomRow > 0 && grid.cells[randomRow - 1].some(cell => cell.accessible);
+
+      let constraint: SoftForbiddenConstraint;
+
+      if (difficulty !== 'hard') {
+        if (!hasNext) continue;
+        constraint = { nextRow: randomRow + 1 };
+      } else {
+        const modes: SoftForbiddenConstraint[] = [];
+        if (hasNext) modes.push({ nextRow: randomRow + 1 });
+        if (hasPrev) modes.push({ prevRow: randomRow - 1 });
+        if (hasNext && hasPrev) modes.push({ nextRow: randomRow + 1, prevRow: randomRow - 1 });
+        if (modes.length === 0) continue;
+        constraint = modes[Math.floor(Math.random() * modes.length)];
       }
+
+      if (currentCell.fixed && currentCell.letter) {
+        if (this.isTrivialSoftConstraint(grid, currentCell.letter, constraint)) continue;
+      }
+
+      const tile: SoftMatchTile = {
+        type: 'softMatch',
+        constraint,
+      };
+
+      grid.cells[randomRow][randomCol].ruleTile = tile;
+      placedTiles++;
     }
   }
   
-  private placeForbiddenMatchTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+  private placeForbiddenMatchTiles(
+    grid: Grid,
+    config: PuzzleConfig,
+    profile: GenerationProfile,
+    difficulty: Difficulty,
+  ): void {
     const targetTiles = profile.forbiddenTiles;
     let placedTiles = 0;
     const maxAttempts = 100;
@@ -229,23 +286,39 @@ export class PuzzleGenerator {
     while (placedTiles < targetTiles && attempts < maxAttempts) {
       attempts++;
 
-      const randomRow = Math.floor(Math.random() * (config.rows - 2));
+      const randomRow = Math.floor(Math.random() * config.rows);
       const randomCol = Math.floor(Math.random() * config.cols);
 
       const currentCell = grid.cells[randomRow][randomCol];
-      const hasAccessibleNextRow = grid.cells[randomRow + 1].some(cell => cell.accessible);
+      if (!currentCell.accessible || currentCell.ruleTile) continue;
 
-      if (currentCell.accessible && !currentCell.ruleTile && hasAccessibleNextRow) {
-        const tile: ForbiddenMatchTile = {
-          type: 'forbiddenMatch',
-          constraint: {
-            nextRow: randomRow + 1,
-          },
-        };
+      const hasNext =
+        randomRow + 1 < config.rows &&
+        grid.cells[randomRow + 1].some(cell => cell.accessible);
+      const hasPrev =
+        randomRow > 0 && grid.cells[randomRow - 1].some(cell => cell.accessible);
 
-        grid.cells[randomRow][randomCol].ruleTile = tile;
-        placedTiles++;
+      let constraint: SoftForbiddenConstraint;
+
+      if (difficulty !== 'hard') {
+        if (!hasNext) continue;
+        constraint = { nextRow: randomRow + 1 };
+      } else {
+        const modes: SoftForbiddenConstraint[] = [];
+        if (hasNext) modes.push({ nextRow: randomRow + 1 });
+        if (hasPrev) modes.push({ prevRow: randomRow - 1 });
+        if (hasNext && hasPrev) modes.push({ nextRow: randomRow + 1, prevRow: randomRow - 1 });
+        if (modes.length === 0) continue;
+        constraint = modes[Math.floor(Math.random() * modes.length)];
       }
+
+      const tile: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint,
+      };
+
+      grid.cells[randomRow][randomCol].ruleTile = tile;
+      placedTiles++;
     }
   }
 
@@ -267,7 +340,12 @@ export class PuzzleGenerator {
     return count;
   }
 
-  private ensureMinimumRuleTiles(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): void {
+  private ensureMinimumRuleTiles(
+    grid: Grid,
+    config: PuzzleConfig,
+    profile: GenerationProfile,
+    difficulty: Difficulty,
+  ): void {
     const min = profile.minRuleTilesPerWord;
     if (min <= 0) return;
 
@@ -310,6 +388,25 @@ export class PuzzleGenerator {
             constraint: { nextRow: slot.row + 1 },
           };
           deficit--;
+          continue;
+        }
+
+        if (
+          difficulty === 'hard' &&
+          slot.row > 0 &&
+          grid.cells[slot.row - 1].some(c => c.accessible)
+        ) {
+          const trivialUp = cell.fixed && cell.letter &&
+            grid.cells[slot.row - 1].some(
+              tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+            );
+          if (trivialUp) continue;
+
+          cell.ruleTile = {
+            type: 'softMatch',
+            constraint: { prevRow: slot.row - 1 },
+          };
+          deficit--;
         }
       }
     }
@@ -326,25 +423,29 @@ export class PuzzleGenerator {
         }
 
         if (cell.ruleTile.type === 'softMatch' && cell.fixed && cell.letter) {
-          const targetRow = cell.ruleTile.constraint.nextRow;
-          const targetCells = grid.cells[targetRow];
-          if (!targetCells) continue;
+          for (const targetRow of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+            const targetCells = grid.cells[targetRow];
+            if (!targetCells) continue;
 
-          // Trivially satisfied: letter already fixed in target row
-          const hasFixedMatch = targetCells.some(tc => tc.accessible && tc.fixed && tc.letter === cell.letter);
-          if (hasFixedMatch) return false;
+            const hasFixedMatch = targetCells.some(
+              tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+            );
+            if (hasFixedMatch) return false;
 
-          // Impossible: entire target row is fixed but letter not present
-          const allFixed = targetCells.every(tc => !tc.accessible || tc.fixed);
-          if (allFixed) return false;
+            const allFixed = targetCells.every(tc => !tc.accessible || tc.fixed);
+            if (allFixed) return false;
+          }
         }
 
         if (cell.ruleTile.type === 'forbiddenMatch' && cell.fixed && cell.letter) {
-          const targetRow = cell.ruleTile.constraint.nextRow;
-          const targetCells = grid.cells[targetRow];
-          if (!targetCells) continue;
-          const hasConflict = targetCells.some(tc => tc.accessible && tc.fixed && tc.letter === cell.letter);
-          if (hasConflict) return false;
+          for (const targetRow of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+            const targetCells = grid.cells[targetRow];
+            if (!targetCells) continue;
+            const hasConflict = targetCells.some(
+              tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+            );
+            if (hasConflict) return false;
+          }
         }
       }
 
@@ -361,13 +462,15 @@ export class PuzzleGenerator {
           if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
           requiredInRow.get(target)!.add(cell.letter);
         } else if (cell.ruleTile.type === 'softMatch') {
-          const target = cell.ruleTile.constraint.nextRow;
-          if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
-          requiredInRow.get(target)!.add(cell.letter);
+          for (const target of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+            if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
+            requiredInRow.get(target)!.add(cell.letter);
+          }
         } else if (cell.ruleTile.type === 'forbiddenMatch') {
-          const target = cell.ruleTile.constraint.nextRow;
-          if (!bannedFromRow.has(target)) bannedFromRow.set(target, new Set());
-          bannedFromRow.get(target)!.add(cell.letter);
+          for (const target of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+            if (!bannedFromRow.has(target)) bannedFromRow.set(target, new Set());
+            bannedFromRow.get(target)!.add(cell.letter);
+          }
         }
       }
 
@@ -424,9 +527,15 @@ export class PuzzleGenerator {
           const cell = grid.cells[sourceRow][c];
           if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
 
-          if (cell.ruleTile.type === 'softMatch' && cell.ruleTile.constraint.nextRow === r) {
+          if (
+            cell.ruleTile.type === 'softMatch' &&
+            softForbiddenTargetRows(cell.ruleTile.constraint).includes(r)
+          ) {
             mustContain.push(cell.letter.toLowerCase());
-          } else if (cell.ruleTile.type === 'forbiddenMatch' && cell.ruleTile.constraint.nextRow === r) {
+          } else if (
+            cell.ruleTile.type === 'forbiddenMatch' &&
+            softForbiddenTargetRows(cell.ruleTile.constraint).includes(r)
+          ) {
             mustNotContain.add(cell.letter.toLowerCase());
           }
         }

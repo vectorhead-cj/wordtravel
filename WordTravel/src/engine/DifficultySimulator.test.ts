@@ -20,8 +20,8 @@ describe('DifficultySimulator', () => {
     });
 
     it('should classify medium success rate as medium', () => {
-      expect(classifyDifficulty(0.6)).toBe('medium');
-      expect(classifyDifficulty(0.65)).toBe('medium');
+      expect(classifyDifficulty(0.4)).toBe('medium');
+      expect(classifyDifficulty(0.25)).toBe('medium');
     });
 
     it('should classify low success rate as hard', () => {

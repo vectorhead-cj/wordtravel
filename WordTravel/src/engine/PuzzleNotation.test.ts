@@ -77,6 +77,34 @@ describe('PuzzleNotation', () => {
       }
     });
 
+    it('should parse soft match prevRow-only on an inner row', () => {
+      const dotSoftUp = ('.' + '\u030b').normalize('NFC');
+      const grid = parseGrid(`...\n${dotSoftUp}..\n...`);
+      const cell = grid.cells[1][0];
+      expect(cell.ruleTile?.type).toBe('softMatch');
+      if (cell.ruleTile?.type === 'softMatch') {
+        expect(cell.ruleTile.constraint.prevRow).toBe(0);
+        expect(cell.ruleTile.constraint.nextRow).toBeUndefined();
+      }
+    });
+
+    it('should parse bidirectional soft match (tilde + double acute)', () => {
+      const both = ('.' + '\u0303' + '\u030b').normalize('NFC');
+      const grid = parseGrid(`...\n${both}..\n...`);
+      const cell = grid.cells[1][0];
+      expect(cell.ruleTile?.type).toBe('softMatch');
+      if (cell.ruleTile?.type === 'softMatch') {
+        expect(cell.ruleTile.constraint.nextRow).toBe(2);
+        expect(cell.ruleTile.constraint.prevRow).toBe(0);
+      }
+    });
+
+    it('should round-trip bidirectional soft through serialize/parse', () => {
+      const both = ('.' + '\u0303' + '\u030b').normalize('NFC');
+      const input = `...\n${both}..\n...`;
+      expect(serializeGrid(parseGrid(input))).toBe(input);
+    });
+
     it('should parse letter + circumflex as fixed letter with hard match', () => {
       const grid = parseGrid('\u00C2\n.');  // Â
       const cell = grid.cells[0][0];

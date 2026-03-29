@@ -1,7 +1,7 @@
 import { PuzzleGenerator } from './PuzzleGenerator';
 import { parseGrid, serializeGrid } from './PuzzleNotation';
 import { generatorDictionary } from './Dictionary';
-import { Grid, PuzzleType } from './types';
+import { Grid, PuzzleType, Difficulty, softForbiddenTargetRows } from './types';
 import {
   validateHardMatchTiles,
   validateSoftMatchTiles,
@@ -18,14 +18,15 @@ describe('PuzzleGenerator', () => {
   });
 
   /** Fast path: generates a validated grid without running difficulty simulation. */
-  function generateGridFast(puzzleType: PuzzleType): Grid {
+  function generateGridFast(puzzleType: PuzzleType, difficulty: Difficulty = 'medium'): Grid {
     const gen = new PuzzleGenerator();
-    for (let i = 0; i < 50; i++) {
+    const maxAttempts = difficulty === 'hard' ? 200 : 50;
+    for (let i = 0; i < maxAttempts; i++) {
       const config = gen.generatePuzzleConfig(0, 0, puzzleType);
-      const grid = gen.createGridFromConfig(config, puzzleType);
+      const grid = gen.createGridFromConfig(config, puzzleType, difficulty);
       if (gen.isGridValid(grid)) return grid;
     }
-    throw new Error('Failed to generate valid grid in 50 attempts');
+    throw new Error(`Failed to generate valid grid in ${maxAttempts} attempts`);
   }
 
   describe('generatePuzzle output shape', () => {
@@ -216,12 +217,13 @@ describe('PuzzleGenerator', () => {
               for (let c = 0; c < grid.cols; c++) {
                 const cell = grid.cells[r][c];
                 if (cell.ruleTile?.type !== 'softMatch' || !cell.fixed || !cell.letter) continue;
-                const targetRow = cell.ruleTile.constraint.nextRow;
-                const targetCells = grid.cells[targetRow];
-                const hasTrivialMatch = targetCells.some(
-                  tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
-                );
-                expect(hasTrivialMatch).toBe(false);
+                for (const targetRow of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+                  const targetCells = grid.cells[targetRow];
+                  const hasTrivialMatch = targetCells.some(
+                    tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+                  );
+                  expect(hasTrivialMatch).toBe(false);
+                }
               }
             }
           }
@@ -251,6 +253,60 @@ describe('PuzzleGenerator', () => {
         });
       });
     }
+
+    const HARD_ROUND_TRIP_ITERATIONS = 400;
+
+    it(`should round-trip hard-difficulty open grids through serialize/parse (${HARD_ROUND_TRIP_ITERATIONS} puzzles)`, () => {
+      for (let i = 0; i < HARD_ROUND_TRIP_ITERATIONS; i++) {
+        const grid = generateGridFast('open', 'hard');
+        const serialized = serializeGrid(grid);
+        const roundTripped = serializeGrid(parseGrid(serialized));
+        expect(roundTripped).toBe(serialized);
+      }
+    });
+  });
+
+  describe('soft/forbidden direction gating', () => {
+    it('never sets prevRow on soft or forbidden tiles for easy and medium', () => {
+      for (const difficulty of ['easy', 'medium'] as const) {
+        for (let i = 0; i < 150; i++) {
+          const grid = generateGridFast('open', difficulty);
+          for (let r = 0; r < grid.rows; r++) {
+            for (let c = 0; c < grid.cols; c++) {
+              const t = grid.cells[r][c].ruleTile;
+              if (t?.type === 'softMatch' || t?.type === 'forbiddenMatch') {
+                expect(t.constraint.prevRow).toBeUndefined();
+              }
+            }
+          }
+        }
+      }
+    });
+
+    it('sometimes sets prevRow on soft or forbidden for hard', () => {
+      let sawPrev = false;
+      const gen = new PuzzleGenerator();
+      for (let i = 0; i < 4000; i++) {
+        const config = gen.generatePuzzleConfig(0, 0, 'open');
+        const grid = gen.createGridFromConfig(config, 'open', 'hard');
+        if (!gen.isGridValid(grid)) continue;
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            const t = grid.cells[r][c].ruleTile;
+            if (
+              (t?.type === 'softMatch' || t?.type === 'forbiddenMatch') &&
+              t.constraint.prevRow !== undefined
+            ) {
+              sawPrev = true;
+              break;
+            }
+          }
+          if (sawPrev) break;
+        }
+        if (sawPrev) break;
+      }
+      expect(sawPrev).toBe(true);
+    });
   });
 });
 

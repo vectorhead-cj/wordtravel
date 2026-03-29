@@ -1,40 +1,86 @@
-import { Grid, Cell, RuleTile } from './types';
+import { Grid, Cell, RuleTile, SoftForbiddenConstraint } from './types';
 
 const COMBINING_CIRCUMFLEX = '\u0302'; // hard match
-const COMBINING_TILDE = '\u0303';      // soft match
-const COMBINING_DIAERESIS = '\u0308';  // forbidden match
+const COMBINING_TILDE = '\u0303'; // soft match → next row
+const COMBINING_SOFT_UP = '\u030b'; // soft match → prev row (double acute)
+const COMBINING_DIAERESIS = '\u0308'; // forbidden → next row
+const COMBINING_FORBIDDEN_UP = '\u0312'; // forbidden → prev row (turned comma above)
+
+const KNOWN_MARKS = new Set([
+  COMBINING_CIRCUMFLEX,
+  COMBINING_TILDE,
+  COMBINING_SOFT_UP,
+  COMBINING_DIAERESIS,
+  COMBINING_FORBIDDEN_UP,
+]);
 
 const STANDALONE_HARD = '^';
 const STANDALONE_SOFT = '~';
 const STANDALONE_FORBIDDEN = '¨';
 
-function ruleFromCombining(mark: string, row: number, col: number): RuleTile | undefined {
-  switch (mark) {
-    case COMBINING_CIRCUMFLEX:
-      return {
-        type: 'hardMatch',
-        constraint: { pairedRow: row + 1, pairedCol: col, position: 'top' },
-      };
-    case COMBINING_TILDE:
-      return {
-        type: 'softMatch',
-        constraint: { nextRow: row + 1 },
-      };
-    case COMBINING_DIAERESIS:
-      return {
-        type: 'forbiddenMatch',
-        constraint: { nextRow: row + 1 },
-      };
-    default:
-      return undefined;
+function softForbiddenConstraintEmpty(c: SoftForbiddenConstraint): boolean {
+  return c.nextRow === undefined && c.prevRow === undefined;
+}
+
+function filterKnownSortedMarks(nfdTail: string): string {
+  return [...nfdTail]
+    .filter(ch => KNOWN_MARKS.has(ch))
+    .sort()
+    .join('');
+}
+
+function ruleFromCombiningMarks(marks: string, row: number, col: number): RuleTile | undefined {
+  const hasHard = marks.includes(COMBINING_CIRCUMFLEX);
+  const hasTilde = marks.includes(COMBINING_TILDE);
+  const hasSoftUp = marks.includes(COMBINING_SOFT_UP);
+  const hasDia = marks.includes(COMBINING_DIAERESIS);
+  const hasForbUp = marks.includes(COMBINING_FORBIDDEN_UP);
+
+  if (hasHard) {
+    if (marks !== COMBINING_CIRCUMFLEX) return undefined;
+    return {
+      type: 'hardMatch',
+      constraint: { pairedRow: row + 1, pairedCol: col, position: 'top' },
+    };
   }
+
+  if (hasTilde || hasSoftUp) {
+    if (hasDia || hasForbUp) return undefined;
+    const constraint: SoftForbiddenConstraint = {};
+    if (hasTilde) constraint.nextRow = row + 1;
+    if (hasSoftUp) constraint.prevRow = row - 1;
+    if (softForbiddenConstraintEmpty(constraint)) return undefined;
+    return { type: 'softMatch', constraint };
+  }
+
+  if (hasDia || hasForbUp) {
+    const constraint: SoftForbiddenConstraint = {};
+    if (hasDia) constraint.nextRow = row + 1;
+    if (hasForbUp) constraint.prevRow = row - 1;
+    if (softForbiddenConstraintEmpty(constraint)) return undefined;
+    return { type: 'forbiddenMatch', constraint };
+  }
+
+  return undefined;
 }
 
 function combiningFromRule(tile: RuleTile): string | null {
   if (tile.type === 'hardMatch' && tile.constraint.position === 'bottom') return null;
   if (tile.type === 'hardMatch') return COMBINING_CIRCUMFLEX;
-  if (tile.type === 'softMatch') return COMBINING_TILDE;
-  if (tile.type === 'forbiddenMatch') return COMBINING_DIAERESIS;
+  if (tile.type === 'softMatch') {
+    const parts: string[] = [];
+    if (tile.constraint.nextRow !== undefined) parts.push(COMBINING_TILDE);
+    if (tile.constraint.prevRow !== undefined) parts.push(COMBINING_SOFT_UP);
+    if (parts.length === 0) return null;
+    return parts.sort().join('');
+  }
+  if (tile.type === 'forbiddenMatch') {
+    const parts: string[] = [];
+    if (tile.constraint.nextRow !== undefined) parts.push(COMBINING_DIAERESIS);
+    if (tile.constraint.prevRow !== undefined) parts.push(COMBINING_FORBIDDEN_UP);
+    if (parts.length === 0) return null;
+    return parts.sort().join('');
+  }
   return null;
 }
 
@@ -53,11 +99,9 @@ function decomposeChar(raw: string): ParsedChar {
   if (nfd.length === 1) return { base: nfd, combining: null };
 
   const base = nfd[0];
-  const mark = nfd.slice(1);
-  if (mark === COMBINING_CIRCUMFLEX || mark === COMBINING_TILDE || mark === COMBINING_DIAERESIS) {
-    return { base, combining: mark };
-  }
-  return { base: raw, combining: null };
+  const marks = filterKnownSortedMarks(nfd.slice(1));
+  if (marks.length === 0) return { base: raw, combining: null };
+  return { base, combining: marks };
 }
 
 /**
@@ -104,7 +148,7 @@ export function parseGrid(notation: string): Grid {
       }
 
       const isLetter = /^[A-Z]$/i.test(base);
-      const rule = combining ? ruleFromCombining(combining, r, c) : undefined;
+      const rule = combining ? ruleFromCombiningMarks(combining, r, c) : undefined;
 
       if (isLetter) {
         cells[r][c] = {
@@ -172,11 +216,10 @@ export function serializeGrid(grid: Grid): string {
       } else if (hasLetter) {
         line += cell.letter!.toUpperCase();
       } else if (combining) {
-        // Empty cell with rule -> standalone char
         if (combining === COMBINING_CIRCUMFLEX) line += STANDALONE_HARD;
         else if (combining === COMBINING_TILDE) line += STANDALONE_SOFT;
         else if (combining === COMBINING_DIAERESIS) line += STANDALONE_FORBIDDEN;
-        else line += '.';
+        else line += ('.' + combining).normalize('NFC');
       } else {
         line += '.';
       }
@@ -186,6 +229,16 @@ export function serializeGrid(grid: Grid): string {
   }
 
   return lines.join('\n');
+}
+
+function shiftSoftForbidden(
+  c: SoftForbiddenConstraint,
+  rowOffset: number,
+): SoftForbiddenConstraint {
+  const next: SoftForbiddenConstraint = {};
+  if (c.nextRow !== undefined) next.nextRow = c.nextRow + rowOffset;
+  if (c.prevRow !== undefined) next.prevRow = c.prevRow + rowOffset;
+  return next;
 }
 
 function shiftRuleTile(tile: RuleTile, rowOffset: number): RuleTile {
@@ -201,12 +254,12 @@ function shiftRuleTile(tile: RuleTile, rowOffset: number): RuleTile {
   if (tile.type === 'softMatch') {
     return {
       ...tile,
-      constraint: { nextRow: tile.constraint.nextRow + rowOffset },
+      constraint: shiftSoftForbidden(tile.constraint, rowOffset),
     };
   }
   return {
     ...tile,
-    constraint: { nextRow: (tile as any).constraint.nextRow + rowOffset },
+    constraint: shiftSoftForbidden(tile.constraint, rowOffset),
   } as RuleTile;
 }
 

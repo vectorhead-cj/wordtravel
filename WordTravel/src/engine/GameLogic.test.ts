@@ -6,6 +6,7 @@ import {
   validateNoHardMatchForbiddenConflict,
   validateUniqueWords,
   getRowValidationState,
+  computeRuleFulfillment,
 } from './GameLogic';
 import { Grid, Cell, HardMatchTile, SoftMatchTile, ForbiddenMatchTile, RuleTile } from './types';
 import { playerDictionary } from './Dictionary';
@@ -1000,6 +1001,93 @@ describe('GameLogic Validation', () => {
       ]);
 
       expect(validateHardMatchTiles(grid, 0)).toBe(true);
+    });
+  });
+
+  describe('bidirectional soft and forbidden', () => {
+    it('validateSoftMatchTiles respects prevRow', () => {
+      const softUp: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { prevRow: 0 },
+      };
+      const grid = createTestGrid([
+        [
+          createTestCell('C', true),
+          createTestCell('A', true),
+          createTestCell('T', true),
+        ],
+        [
+          createTestCell('A', true, softUp),
+          createTestCell('B', true),
+          createTestCell('C', true),
+        ],
+      ]);
+      expect(validateSoftMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('validateSoftMatchTiles fails prevRow when letter missing above', () => {
+      const softUp: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { prevRow: 0 },
+      };
+      const grid = createTestGrid([
+        [
+          createTestCell('C', true),
+          createTestCell('A', true),
+          createTestCell('T', true),
+        ],
+        [
+          createTestCell('Z', true, softUp),
+          createTestCell('B', true),
+          createTestCell('C', true),
+        ],
+      ]);
+      expect(validateSoftMatchTiles(grid, 1)).toBe(false);
+    });
+
+    it('computeRuleFulfillment is fulfilled when both nextRow and prevRow satisfied', () => {
+      const softBoth: SoftMatchTile = {
+        type: 'softMatch',
+        constraint: { prevRow: 0, nextRow: 2 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('A', true), createTestCell('B', true)],
+        [createTestCell('B', true, softBoth), createTestCell('A', true)],
+        [createTestCell('A', true), createTestCell('B', true)],
+      ]);
+      expect(computeRuleFulfillment(grid, 1, 0)).toBe('fulfilled');
+    });
+
+    it('validateForbiddenMatchTiles respects prevRow', () => {
+      const forbUp: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { prevRow: 0 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [
+          createTestCell('Z', true, forbUp),
+          createTestCell('B', true),
+          createTestCell('C', true),
+        ],
+      ]);
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(true);
+    });
+
+    it('validateForbiddenMatchTiles fails prevRow when forbidden letter appears above', () => {
+      const forbUp: ForbiddenMatchTile = {
+        type: 'forbiddenMatch',
+        constraint: { prevRow: 0 },
+      };
+      const grid = createTestGrid([
+        [createTestCell('C', true), createTestCell('A', true), createTestCell('T', true)],
+        [
+          createTestCell('A', true, forbUp),
+          createTestCell('B', true),
+          createTestCell('C', true),
+        ],
+      ]);
+      expect(validateForbiddenMatchTiles(grid, 1)).toBe(false);
     });
   });
 });

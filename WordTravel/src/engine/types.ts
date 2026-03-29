@@ -16,18 +16,32 @@ export interface HardMatchTile {
   };
 }
 
+export type SoftForbiddenConstraint = {
+  nextRow?: number;
+  prevRow?: number;
+};
+
+export function softForbiddenTargetRows(c: SoftForbiddenConstraint): number[] {
+  const rows: number[] = [];
+  if (c.nextRow !== undefined) rows.push(c.nextRow);
+  if (c.prevRow !== undefined) rows.push(c.prevRow);
+  return rows;
+}
+
+export function isBidirectionalSoftForbidden(
+  tile: SoftMatchTile | ForbiddenMatchTile,
+): boolean {
+  return tile.constraint.nextRow !== undefined && tile.constraint.prevRow !== undefined;
+}
+
 export interface SoftMatchTile {
   type: 'softMatch';
-  constraint: {
-    nextRow: number;
-  };
+  constraint: SoftForbiddenConstraint;
 }
 
 export interface ForbiddenMatchTile {
   type: 'forbiddenMatch';
-  constraint: {
-    nextRow: number;
-  };
+  constraint: SoftForbiddenConstraint;
 }
 
 export type RuleTile = HardMatchTile | SoftMatchTile | ForbiddenMatchTile;

@@ -1,4 +1,4 @@
-import { Grid, Difficulty, cloneGrid } from './types';
+import { Grid, Difficulty, cloneGrid, softForbiddenTargetRows } from './types';
 import { ConstraintQuery, generatorDictionary } from './Dictionary';
 import { PUZZLE_CONFIG } from './config';
 
@@ -124,9 +124,12 @@ function getCandidatesForRow(
       const cell = grid.cells[sourceRow][col];
       if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
 
-      if (cell.ruleTile.type === 'softMatch' && cell.ruleTile.constraint.nextRow === row) {
+      if (cell.ruleTile.type === 'softMatch' && softForbiddenTargetRows(cell.ruleTile.constraint).includes(row)) {
         mustContain.push(cell.letter.toLowerCase());
-      } else if (cell.ruleTile.type === 'forbiddenMatch' && cell.ruleTile.constraint.nextRow === row) {
+      } else if (
+        cell.ruleTile.type === 'forbiddenMatch' &&
+        softForbiddenTargetRows(cell.ruleTile.constraint).includes(row)
+      ) {
         mustNotContain.add(cell.letter.toLowerCase());
       }
     }
@@ -138,18 +141,36 @@ function getCandidatesForRow(
     const cell = grid.cells[row][col];
     if (cell.ruleTile?.type !== 'softMatch') continue;
 
-    const nextRow = cell.ruleTile.constraint.nextRow;
-    if (!isRowFilled(grid, nextRow)) continue;
-
-    const letters = new Set<string>();
-    for (let c = 0; c < grid.cols; c++) {
-      const nextCell = grid.cells[nextRow][c];
-      if (nextCell.accessible && nextCell.letter) {
-        letters.add(nextCell.letter.toLowerCase());
+    const constraint = cell.ruleTile.constraint;
+    const letterSets: Set<string>[] = [];
+    if (constraint.nextRow !== undefined && isRowFilled(grid, constraint.nextRow)) {
+      const letters = new Set<string>();
+      for (let c = 0; c < grid.cols; c++) {
+        const t = grid.cells[constraint.nextRow][c];
+        if (t.accessible && t.letter) {
+          letters.add(t.letter.toLowerCase());
+        }
       }
+      if (letters.size > 0) letterSets.push(letters);
     }
-    if (letters.size > 0) {
-      forwardSoftAllowedByPos.set(i, letters);
+    if (constraint.prevRow !== undefined && isRowFilled(grid, constraint.prevRow)) {
+      const letters = new Set<string>();
+      for (let c = 0; c < grid.cols; c++) {
+        const t = grid.cells[constraint.prevRow][c];
+        if (t.accessible && t.letter) {
+          letters.add(t.letter.toLowerCase());
+        }
+      }
+      if (letters.size > 0) letterSets.push(letters);
+    }
+    if (letterSets.length === 0) continue;
+
+    let allowed = letterSets[0];
+    for (let k = 1; k < letterSets.length; k++) {
+      allowed = new Set([...allowed].filter(x => letterSets[k].has(x)));
+    }
+    if (allowed.size > 0) {
+      forwardSoftAllowedByPos.set(i, allowed);
     }
   }
 
