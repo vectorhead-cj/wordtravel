@@ -25,6 +25,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    zIndex: 30,
+    elevation: 30,
   },
   errorText: {
     color: colors.errorText,

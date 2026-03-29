@@ -7,8 +7,8 @@ import {
   RowValidationState,
 } from '../engine/GameLogic';
 
-function getErrorMessage(state: RowValidationState): string {
-  if (!state.spelling) return 'Not in dictionary';
+function getErrorMessage(state: RowValidationState): string | null {
+  if (!state.spelling) return null;
   if (!state.uniqueWords) return 'Word already used';
   if (state.hasHardMatchTile && !state.hardMatch) return '● rule not met';
   if (state.hasSoftMatchTile && !state.softMatch) return '○ rule not met';
@@ -93,7 +93,10 @@ export function useGridInput({
       onRowValidated(currentPosition.row, isValid);
 
       if (!isValid) {
-        showError(getErrorMessage(validationState));
+        const errorMessage = getErrorMessage(validationState);
+        if (errorMessage) {
+          showError(errorMessage);
+        }
       }
     }
   }, [readOnly, grid, mode, currentPosition, onGridChange, onRowValidated, showError]);

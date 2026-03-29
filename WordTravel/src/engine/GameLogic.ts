@@ -217,6 +217,16 @@ export interface RowValidationState {
   hasForbiddenMatchTile: boolean;
 }
 
+export interface RowEvaluationBlockers {
+  canEvaluate: boolean;
+  rowComplete: boolean;
+  needsAbove: boolean;
+  needsBelow: boolean;
+  blockingRows: number[];
+}
+
+export type RowRuleSignalState = 'pending' | 'valid' | 'invalid';
+
 export function getRowValidationState(grid: Grid, row: number): RowValidationState {
   let hasHardMatchTile = false;
   let hasSoftMatchTile = false;
@@ -264,6 +274,111 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
     hasSoftMatchTile,
     hasForbiddenMatchTile,
   };
+}
+
+export function getRowEvaluationBlockers(grid: Grid, row: number): RowEvaluationBlockers {
+  const rowComplete = isRowComplete(grid, row);
+  if (!rowComplete) {
+    return {
+      canEvaluate: false,
+      rowComplete: false,
+      needsAbove: false,
+      needsBelow: false,
+      blockingRows: [],
+    };
+  }
+
+  const requiredRows = new Set<number>();
+  const addRequiredRow = (candidateRow: number) => {
+    if (candidateRow < 0 || candidateRow >= grid.rows || candidateRow === row) return;
+    if (!isRowComplete(grid, candidateRow)) {
+      requiredRows.add(candidateRow);
+    }
+  };
+
+  for (let col = 0; col < grid.cols; col++) {
+    const rowCell = grid.cells[row][col];
+    if (!rowCell.accessible || !rowCell.ruleTile) continue;
+
+    if (rowCell.ruleTile.type === 'hardMatch') {
+      addRequiredRow(rowCell.ruleTile.constraint.pairedRow);
+      continue;
+    }
+
+    for (const targetRow of softForbiddenTargetRows(rowCell.ruleTile.constraint)) {
+      addRequiredRow(targetRow);
+    }
+  }
+
+  for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+    if (sourceRow === row) continue;
+
+    for (let col = 0; col < grid.cols; col++) {
+      const sourceCell = grid.cells[sourceRow][col];
+      if (!sourceCell.accessible || !sourceCell.ruleTile) continue;
+
+      if (sourceCell.ruleTile.type === 'softMatch' || sourceCell.ruleTile.type === 'forbiddenMatch') {
+        const targets = softForbiddenTargetRows(sourceCell.ruleTile.constraint);
+        if (targets.includes(row)) {
+          addRequiredRow(sourceRow);
+        }
+      }
+    }
+  }
+
+  const blockingRows = Array.from(requiredRows).sort((a, b) => a - b);
+  return {
+    canEvaluate: blockingRows.length === 0,
+    rowComplete: true,
+    needsAbove: blockingRows.some(r => r < row),
+    needsBelow: blockingRows.some(r => r > row),
+    blockingRows,
+  };
+}
+
+export function getRowRuleSignalState(grid: Grid, row: number): RowRuleSignalState {
+  const blockers = getRowEvaluationBlockers(grid, row);
+  if (!blockers.canEvaluate) return 'pending';
+
+  const validationState = getRowValidationState(grid, row);
+  const isValid =
+    validationState.spelling &&
+    validationState.hardMatch &&
+    validationState.softMatch &&
+    validationState.forbiddenMatch &&
+    validationState.noHardMatchForbiddenConflict &&
+    validationState.uniqueWords;
+
+  return isValid ? 'valid' : 'invalid';
+}
+
+function ruleAppliesToRow(grid: Grid, sourceRow: number, col: number, targetRow: number): boolean {
+  const cell = grid.cells[sourceRow][col];
+  const rule = cell.ruleTile;
+  if (!cell.accessible || !rule) return false;
+
+  if (rule.type === 'hardMatch') {
+    return sourceRow === targetRow || rule.constraint.pairedRow === targetRow;
+  }
+
+  return sourceRow === targetRow || softForbiddenTargetRows(rule.constraint).includes(targetRow);
+}
+
+export function getBrokenApplicableRuleCells(grid: Grid, row: number): Array<{ row: number; col: number }> {
+  const brokenCells: Array<{ row: number; col: number }> = [];
+
+  for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+    for (let col = 0; col < grid.cols; col++) {
+      const cell = grid.cells[sourceRow][col];
+      if (!cell.accessible || !cell.ruleTile) continue;
+      if (!ruleAppliesToRow(grid, sourceRow, col, row)) continue;
+      if (computeRuleFulfillment(grid, sourceRow, col) === 'broken') {
+        brokenCells.push({ row: sourceRow, col });
+      }
+    }
+  }
+
+  return brokenCells;
 }
 
 export type RuleFulfillment = 'neutral' | 'fulfilled' | 'broken';

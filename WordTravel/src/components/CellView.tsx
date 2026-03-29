@@ -14,9 +14,19 @@ interface CellViewProps {
   active?: boolean;
   modifierFulfillment?: RuleFulfillment;
   modifierRotation?: 0 | 180;
+  blinkRuleStroke?: boolean;
 }
 
-export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifierFulfillment, modifierRotation }: CellViewProps) {
+export function CellView({
+  cell,
+  cellSize,
+  tileSize,
+  ghostLetter,
+  active,
+  modifierFulfillment,
+  modifierRotation,
+  blinkRuleStroke,
+}: CellViewProps) {
   if (!cell.accessible) {
     return <View style={{ width: cellSize, height: cellSize }} />;
   }
@@ -34,6 +44,7 @@ export function CellView({ cell, cellSize, tileSize, ghostLetter, active, modifi
         { width: tileSize, height: tileSize, borderRadius: layout.tileCornerRadius },
         cell.fixed && { backgroundColor: colors.background },
         active && { borderColor: colors.tileBorderActive },
+        blinkRuleStroke && { borderColor: colors.ruleBroken },
       ]}>
         {showModifier && ruleTile && modifierFulfillment != null && (
           (ruleTile.type === 'softMatch' || ruleTile.type === 'forbiddenMatch') &&

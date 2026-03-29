@@ -24,8 +24,8 @@ export const colors = {
 } as const;
 
 export const layout = {
-  tileCornerRadius: 20,
-  tileSpacing: 2,
+  tileCornerRadius: 16,
+  tileSpacing: 4,
   tileBorderWidth: 3,
   visibleColumns: 6,
 } as const;

@@ -1,8 +1,15 @@
 import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated, TouchableOpacity } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel, softForbiddenUnidirectionalRotation } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
-import { computeRuleFulfillment } from '../engine/GameLogic';
+import {
+  computeRuleFulfillment,
+  getBrokenApplicableRuleCells,
+  getRowEvaluationBlockers,
+  getRowRuleSignalState,
+  getRowValidationState,
+  getWordFromRow,
+} from '../engine/GameLogic';
 import { countValidNextWords, getValidNextWords } from '../engine/HintEngine';
 import { colors, layout } from '../theme';
 import { CellView } from './CellView';
@@ -51,6 +58,12 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
 }, ref) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [gridAreaLayout, setGridAreaLayout] = useState<{ width: number; height: number } | null>(null);
+  const [signalMessage, setSignalMessage] = useState<string | null>(null);
+  const [blinkTargets, setBlinkTargets] = useState<Set<string>>(new Set());
+  const [blinkVisible, setBlinkVisible] = useState(false);
+  const signalToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blinkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const blinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { currentPosition, errorMessage, handleKeyPress, handleBackspace } = useGridInput({
     grid,
@@ -67,6 +80,62 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   useImperativeHandle(ref, () => ({
     injectKey: (letter: string) => handleKeyPressRef.current(letter),
   }));
+
+  const clearSignalToast = () => {
+    if (signalToastTimeoutRef.current) {
+      clearTimeout(signalToastTimeoutRef.current);
+      signalToastTimeoutRef.current = null;
+    }
+  };
+
+  const showSignalToast = (message: string) => {
+    clearSignalToast();
+    setSignalMessage(message);
+    signalToastTimeoutRef.current = setTimeout(() => {
+      setSignalMessage(null);
+      signalToastTimeoutRef.current = null;
+    }, 1200);
+  };
+
+  const clearBlinkTimers = () => {
+    if (blinkIntervalRef.current) {
+      clearInterval(blinkIntervalRef.current);
+      blinkIntervalRef.current = null;
+    }
+    if (blinkTimeoutRef.current) {
+      clearTimeout(blinkTimeoutRef.current);
+      blinkTimeoutRef.current = null;
+    }
+  };
+
+  const triggerRuleBlink = (cells: Array<{ row: number; col: number }>) => {
+    clearBlinkTimers();
+    if (cells.length === 0) {
+      setBlinkTargets(new Set());
+      setBlinkVisible(false);
+      return;
+    }
+
+    setBlinkTargets(new Set(cells.map(c => `${c.row}-${c.col}`)));
+    setBlinkVisible(true);
+    let toggles = 0;
+    blinkIntervalRef.current = setInterval(() => {
+      toggles += 1;
+      setBlinkVisible(prev => !prev);
+      if (toggles >= 5) {
+        clearBlinkTimers();
+        setBlinkVisible(false);
+        setBlinkTargets(new Set());
+      }
+    }, 140);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearSignalToast();
+      clearBlinkTimers();
+    };
+  }, []);
 
   const hintDataPerRow = useMemo(() => {
     if (hintLevel === 'off') {
@@ -145,6 +214,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         {grid.cells.slice(minRow, maxRow + 1).map((row, i) => {
           const rowIndex = minRow + i;
           const hintData = hintDataPerRow[rowIndex];
+          const rowSignalState = getRowRuleSignalState(grid, rowIndex);
 
           return (
             <View key={rowIndex} style={styles.gridRow}>
@@ -180,10 +250,59 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                       active={isActive}
                       modifierFulfillment={modifierFulfillment}
                       modifierRotation={modifierRotation}
+                      blinkRuleStroke={blinkVisible && blinkTargets.has(`${rowIndex}-${colIndex}`)}
                     />
                   );
                 })}
               </View>
+              <TouchableOpacity
+                style={styles.rowSignalArea}
+                onPress={() => {
+                  const blockers = getRowEvaluationBlockers(grid, rowIndex);
+                  if (!blockers.rowComplete) {
+                    showSignalToast('This row is not filled');
+                    return;
+                  }
+
+                  if (!blockers.canEvaluate) {
+                    const directions: string[] = [];
+                    if (blockers.needsAbove) directions.push('above');
+                    if (blockers.needsBelow) directions.push('below');
+                    const locationText = directions.length > 0 ? directions.join(' and ') : 'around';
+                    showSignalToast(`Fill row ${locationText} to evaluate this row`);
+                    return;
+                  }
+
+                  const validation = getRowValidationState(grid, rowIndex);
+                  const isInvalid =
+                    !validation.spelling ||
+                    !validation.hardMatch ||
+                    !validation.softMatch ||
+                    !validation.forbiddenMatch ||
+                    !validation.noHardMatchForbiddenConflict ||
+                    !validation.uniqueWords;
+
+                  if (!isInvalid) return;
+
+                  triggerRuleBlink(getBrokenApplicableRuleCells(grid, rowIndex));
+                  if (!validation.spelling) {
+                    const word = getWordFromRow(grid, rowIndex).toUpperCase();
+                    showSignalToast(`${word} is not in dictionary`);
+                  }
+                }}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Row ${rowIndex + 1} rule status`}
+              >
+                <View
+                  style={[
+                    styles.rowSignalDot,
+                    rowSignalState === 'pending' && styles.rowSignalPending,
+                    rowSignalState === 'valid' && styles.rowSignalValid,
+                    rowSignalState === 'invalid' && styles.rowSignalInvalid,
+                  ]}
+                />
+              </TouchableOpacity>
               {hintData?.count != null && (
                 <View style={styles.rowHint}>
                   <Text style={styles.hintCount}>{hintData.count}</Text>
@@ -261,10 +380,11 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
           style={keyboardTranslateY ? { transform: [{ translateY: keyboardTranslateY }] } : undefined}
           pointerEvents={readOnly ? 'none' : 'auto'}
         >
-          <ErrorToast message={errorMessage} />
           <CustomKeyboard onKey={letter => handleKeyPress(letter)} onBackspace={handleBackspace} />
         </Animated.View>
       )}
+
+      <ErrorToast message={signalMessage ?? errorMessage} />
 
       {!readOnly && (
         <TextInput
@@ -323,6 +443,31 @@ const styles = StyleSheet.create({
   rowHint: {
     paddingLeft: 6,
     justifyContent: 'center',
+  },
+  rowSignalArea: {
+    width: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+    marginRight: 2,
+  },
+  rowSignalDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.ruleIndicatorNeutral,
+  },
+  rowSignalPending: {
+    backgroundColor: '#cbc4b5',
+  },
+  rowSignalValid: {
+    backgroundColor: '#2fb65d',
+    borderColor: '#2fb65d',
+  },
+  rowSignalInvalid: {
+    backgroundColor: colors.ruleBroken,
+    borderColor: colors.ruleBroken,
   },
   hintCount: {
     fontSize: 11,
