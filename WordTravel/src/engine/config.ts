@@ -2,16 +2,50 @@ import { Difficulty } from './types';
 
 export interface GenerationProfile {
   hardMatchPairs: number;
+  hardMatchMaxChainLength: number;
   softMatchTiles: number;
   forbiddenTiles: number;
   fixedTiles: number;
   minRuleTilesPerWord: number;
+  minCandidatesPerRow: number;
+  maxConsecutiveSameLength: number;
+  minForbiddenGroupSize: number;
 }
 
 export const GENERATION_PROFILES: Record<Difficulty, GenerationProfile> = {
-  easy:   { hardMatchPairs: 2, softMatchTiles: 2, forbiddenTiles: 0, fixedTiles: 3, minRuleTilesPerWord: 1 },
-  medium: { hardMatchPairs: 4, softMatchTiles: 4, forbiddenTiles: 2, fixedTiles: 3, minRuleTilesPerWord: 1 },
-  hard:   { hardMatchPairs: 5, softMatchTiles: 5, forbiddenTiles: 3, fixedTiles: 2, minRuleTilesPerWord: 1 },
+  easy: {
+    hardMatchPairs: 2,
+    hardMatchMaxChainLength: 2,
+    softMatchTiles: 2,
+    forbiddenTiles: 0,
+    fixedTiles: 3,
+    minRuleTilesPerWord: 1,
+    minCandidatesPerRow: 20,
+    maxConsecutiveSameLength: 3,
+    minForbiddenGroupSize: 2,
+  },
+  medium: {
+    hardMatchPairs: 4,
+    hardMatchMaxChainLength: 2,
+    softMatchTiles: 4,
+    forbiddenTiles: 2,
+    fixedTiles: 3,
+    minRuleTilesPerWord: 1,
+    minCandidatesPerRow: 5,
+    maxConsecutiveSameLength: 3,
+    minForbiddenGroupSize: 2,
+  },
+  hard: {
+    hardMatchPairs: 4,
+    hardMatchMaxChainLength: 3,
+    softMatchTiles: 3,
+    forbiddenTiles: 2,
+    fixedTiles: 2,
+    minRuleTilesPerWord: 1,
+    minCandidatesPerRow: 1,
+    maxConsecutiveSameLength: 2,
+    minForbiddenGroupSize: 2,
+  },
 };
 
 export const PUZZLE_CONFIG = {

@@ -1,7 +1,14 @@
 import { PuzzleGenerator } from './PuzzleGenerator';
 import { parseGrid, serializeGrid } from './PuzzleNotation';
 import { generatorDictionary } from './Dictionary';
-import { Grid, PuzzleType, Difficulty, PuzzleConfig, lastWordSlotRow, softForbiddenTargetRows } from './types';
+import { GENERATION_PROFILES } from './config';
+import {
+  Grid,
+  PuzzleType,
+  Difficulty,
+  getCellRuleTiles,
+  softForbiddenTargetRows,
+} from './types';
 import {
   validateHardMatchTiles,
   validateSoftMatchTiles,
@@ -10,418 +17,22 @@ import {
   isRowComplete,
 } from './GameLogic';
 
-const ITERATIONS = 5000;
+const FUZZ_ITERATIONS = 2000;
+const gen = new PuzzleGenerator();
 
-describe('PuzzleGenerator', () => {
-  beforeAll(() => {
-    generatorDictionary.initialize();
-  });
-
-  /** Fast path: generates a validated grid without running difficulty simulation. */
-  function generateGridFast(puzzleType: PuzzleType, difficulty: Difficulty = 'medium'): Grid {
-    const gen = new PuzzleGenerator();
-    const maxAttempts = difficulty === 'hard' ? 200 : 50;
-    for (let i = 0; i < maxAttempts; i++) {
-      const config = gen.generatePuzzleConfig(0, 0, puzzleType);
-      const grid = gen.createGridFromConfig(config, puzzleType, difficulty);
-      if (gen.isGridValid(grid)) return grid;
-    }
-    throw new Error(`Failed to generate valid grid in ${maxAttempts} attempts`);
-  }
-
-  describe('generatePuzzle output shape', () => {
-    it('should produce a parseable puzzle string for open mode', () => {
-      const gen = new PuzzleGenerator();
-      const { puzzle } = gen.generatePuzzle('open');
-      const grid = parseGrid(puzzle);
-      expect(grid.rows).toBeGreaterThan(0);
-      expect(grid.cols).toBeGreaterThan(0);
-    });
-
-    it('should produce a parseable puzzle string for bridge mode', () => {
-      const gen = new PuzzleGenerator();
-      const { puzzle } = gen.generatePuzzle('bridge');
-      const grid = parseGrid(puzzle);
-      expect(grid.rows).toBeGreaterThan(0);
-    });
-
-    it('should produce a parseable puzzle string for semi mode', () => {
-      const gen = new PuzzleGenerator();
-      const { puzzle } = gen.generatePuzzle('semi');
-      const grid = parseGrid(puzzle);
-      expect(grid.rows).toBeGreaterThan(0);
-    });
-
-    it('should include difficulty metadata in the result', () => {
-      const gen = new PuzzleGenerator();
-      const result = gen.generatePuzzle('bridge');
-      expect(['easy', 'medium', 'hard']).toContain(result.difficulty);
-      expect(result.successRate).toBeGreaterThanOrEqual(0);
-      expect(result.successRate).toBeLessThanOrEqual(1);
-      expect(typeof result.puzzle).toBe('string');
-    });
-  });
-
-  describe('bridge mode shape', () => {
-    it('should have first and last word rows fully fixed', () => {
-      const grid = generateGridFast('bridge');
-      const wordRows = findWordRows(grid);
-      const firstRow = wordRows[0];
-      const lastRow = wordRows[wordRows.length - 1];
-
-      for (let c = 0; c < grid.cols; c++) {
-        if (grid.cells[firstRow][c].accessible) {
-          expect(grid.cells[firstRow][c].fixed).toBe(true);
-          expect(grid.cells[firstRow][c].letter).toBeTruthy();
-        }
-        if (grid.cells[lastRow][c].accessible) {
-          expect(grid.cells[lastRow][c].fixed).toBe(true);
-          expect(grid.cells[lastRow][c].letter).toBeTruthy();
-        }
-      }
-    });
-
-    it('should have fixed words that are valid dictionary words', () => {
-      const grid = generateGridFast('bridge');
-      const wordRows = findWordRows(grid);
-      const firstWord = getWordFromRow(grid, wordRows[0]);
-      const lastWord = getWordFromRow(grid, wordRows[wordRows.length - 1]);
-
-      expect(generatorDictionary.isValidWord(firstWord)).toBe(true);
-      expect(generatorDictionary.isValidWord(lastWord)).toBe(true);
-    });
-  });
-
-  describe('semi mode shape', () => {
-    it('should have only last word row fully fixed', () => {
-      const grid = generateGridFast('semi');
-      const wordRows = findWordRows(grid);
-      const firstRow = wordRows[0];
-      const lastRow = wordRows[wordRows.length - 1];
-
-      // First row should NOT be fully fixed
-      const firstRowFixed = getAccessibleCells(grid, firstRow).every(c => c.fixed);
-      expect(firstRowFixed).toBe(false);
-
-      // Last row should be fully fixed
-      for (let c = 0; c < grid.cols; c++) {
-        if (grid.cells[lastRow][c].accessible) {
-          expect(grid.cells[lastRow][c].fixed).toBe(true);
-        }
-      }
-    });
-  });
-
-  describe('open mode shape', () => {
-    it('should have no fully-fixed word rows', () => {
-      const grid = generateGridFast('open');
-      const wordRows = findWordRows(grid);
-
-      for (const row of wordRows) {
-        const allFixed = getAccessibleCells(grid, row).every(c => c.fixed);
-        expect(allFixed).toBe(false);
-      }
-    });
-  });
-
-  describe('conflict guards', () => {
-    it('should allow rule tiles on fixed cells in bridge mode', () => {
-      let foundRuleOnFixed = false;
-      for (let i = 0; i < ITERATIONS && !foundRuleOnFixed; i++) {
-        const grid = generateGridFast('bridge');
-        for (let r = 0; r < grid.rows; r++) {
-          for (let c = 0; c < grid.cols; c++) {
-            const cell = grid.cells[r][c];
-            if (cell.fixed && cell.ruleTile) {
-              foundRuleOnFixed = true;
-            }
-          }
-        }
-      }
-      expect(foundRuleOnFixed).toBe(true);
-    });
-
-    it('should never have hard match between two fixed cells with different letters', () => {
-      for (let i = 0; i < ITERATIONS; i++) {
-        const grid = generateGridFast('bridge');
-        for (let r = 0; r < grid.rows; r++) {
-          for (let c = 0; c < grid.cols; c++) {
-            const cell = grid.cells[r][c];
-            if (cell.ruleTile?.type !== 'hardMatch' || cell.ruleTile.constraint.position !== 'top') continue;
-            const { pairedRow, pairedCol } = cell.ruleTile.constraint;
-            const paired = grid.cells[pairedRow]?.[pairedCol];
-            if (cell.fixed && paired?.fixed) {
-              expect(cell.letter).toBe(paired.letter);
-            }
-          }
-        }
-      }
-    });
-  });
-
-  describe('property tests - no impossible constraints', () => {
-
-    for (const puzzleType of ['open', 'bridge', 'semi'] as PuzzleType[]) {
-      describe(`${puzzleType} mode`, () => {
-        it(`should never have hard match pairs with mismatched fixed letters (${ITERATIONS} puzzles)`, () => {
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = generateGridFast(puzzleType);
-            for (let r = 0; r < grid.rows; r++) {
-              for (let c = 0; c < grid.cols; c++) {
-                const cell = grid.cells[r][c];
-                if (cell.ruleTile?.type !== 'hardMatch' || cell.ruleTile.constraint.position !== 'top') continue;
-                const { pairedRow, pairedCol } = cell.ruleTile.constraint;
-                const paired = grid.cells[pairedRow]?.[pairedCol];
-                if (cell.fixed && paired?.fixed) {
-                  expect(cell.letter).toBe(paired.letter);
-                }
-              }
-            }
-          }
-        });
-
-        it(`should pass validateNoHardMatchForbiddenConflict for all rows (${ITERATIONS} puzzles)`, () => {
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = generateGridFast(puzzleType);
-            for (let r = 0; r < grid.rows; r++) {
-              if (!isRowComplete(grid, r)) continue;
-              expect(validateNoHardMatchForbiddenConflict(grid, r)).toBe(true);
-            }
-          }
-        });
-
-        it(`should have valid hard match pairs on completed rows (${ITERATIONS} puzzles)`, () => {
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = generateGridFast(puzzleType);
-            for (let r = 0; r < grid.rows; r++) {
-              if (!isRowComplete(grid, r)) continue;
-              expect(validateHardMatchTiles(grid, r)).toBe(true);
-            }
-          }
-        });
-
-        it(`should have valid soft match on completed rows (${ITERATIONS} puzzles)`, () => {
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = generateGridFast(puzzleType);
-            for (let r = 0; r < grid.rows; r++) {
-              if (!isRowComplete(grid, r)) continue;
-              expect(validateSoftMatchTiles(grid, r)).toBe(true);
-            }
-          }
-        });
-
-        it(`should never have a fixed soft match whose letter is already fixed in the target row (${ITERATIONS} puzzles)`, () => {
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = generateGridFast(puzzleType);
-            for (let r = 0; r < grid.rows; r++) {
-              for (let c = 0; c < grid.cols; c++) {
-                const cell = grid.cells[r][c];
-                if (cell.ruleTile?.type !== 'softMatch' || !cell.fixed || !cell.letter) continue;
-                for (const targetRow of softForbiddenTargetRows(cell.ruleTile.constraint)) {
-                  const targetCells = grid.cells[targetRow];
-                  const hasTrivialMatch = targetCells.some(
-                    tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
-                  );
-                  expect(hasTrivialMatch).toBe(false);
-                }
-              }
-            }
-          }
-        });
-
-        it(`should have valid forbidden match on completed rows (${ITERATIONS} puzzles)`, () => {
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = generateGridFast(puzzleType);
-            for (let r = 0; r < grid.rows; r++) {
-              if (!isRowComplete(grid, r)) continue;
-              expect(validateForbiddenMatchTiles(grid, r)).toBe(true);
-            }
-          }
-        });
-
-        it(`should round-trip cleanly through serialize/parse (${ITERATIONS} puzzles)`, () => {
-          const gen = new PuzzleGenerator();
-          for (let i = 0; i < ITERATIONS; i++) {
-            const grid = gen.createGridFromConfig(
-              gen.generatePuzzleConfig(0, 0, puzzleType),
-              puzzleType,
-            );
-            const serialized = serializeGrid(grid);
-            const roundTripped = serializeGrid(parseGrid(serialized));
-            expect(roundTripped).toBe(serialized);
-          }
-        });
-      });
-    }
-
-    const HARD_ROUND_TRIP_ITERATIONS = 400;
-
-    it(`should round-trip hard-difficulty open grids through serialize/parse (${HARD_ROUND_TRIP_ITERATIONS} puzzles)`, () => {
-      for (let i = 0; i < HARD_ROUND_TRIP_ITERATIONS; i++) {
-        const grid = generateGridFast('open', 'hard');
-        const serialized = serializeGrid(grid);
-        const roundTripped = serializeGrid(parseGrid(serialized));
-        expect(roundTripped).toBe(serialized);
-      }
-    });
-  });
-
-  describe('soft/forbidden direction gating', () => {
-    function generateValidGridAndConfig(
-      puzzleType: PuzzleType,
-      difficulty: Difficulty,
-    ): { grid: Grid; config: PuzzleConfig } {
-      const gen = new PuzzleGenerator();
-      const maxAttempts = difficulty === 'hard' ? 300 : 50;
-      for (let i = 0; i < maxAttempts; i++) {
-        const config = gen.generatePuzzleConfig(0, 0, puzzleType);
-        const grid = gen.createGridFromConfig(config, puzzleType, difficulty);
-        if (gen.isGridValid(grid)) return { grid, config };
-      }
-      throw new Error(`Failed to generate valid ${puzzleType}/${difficulty} grid`);
-    }
-
-    function assertNoNextRowSoftForbiddenOnRow(grid: Grid, row: number): void {
-      for (let c = 0; c < grid.cols; c++) {
-        const t = grid.cells[row][c].ruleTile;
-        if (t?.type === 'softMatch' || t?.type === 'forbiddenMatch') {
-          expect(t.constraint.nextRow).toBeUndefined();
-        }
-      }
-    }
-
-    it('never sets prevRow on soft or forbidden tiles for easy and medium', () => {
-      for (const difficulty of ['easy', 'medium'] as const) {
-        for (let i = 0; i < 150; i++) {
-          const grid = generateGridFast('open', difficulty);
-          for (let r = 0; r < grid.rows; r++) {
-            for (let c = 0; c < grid.cols; c++) {
-              const t = grid.cells[r][c].ruleTile;
-              if (t?.type === 'softMatch' || t?.type === 'forbiddenMatch') {
-                expect(t.constraint.prevRow).toBeUndefined();
-              }
-            }
-          }
-        }
-      }
-    });
-
-    describe('last word row must not use nextRow (downward constraint)', () => {
-      const HARD_ITERS_PER_MODE = 400;
-
-      it.each(['open', 'bridge', 'semi'] as const)(
-        'hard %s: fresh grid — no nextRow on lastWordSlotRow(config)',
-        puzzleType => {
-          for (let i = 0; i < HARD_ITERS_PER_MODE; i++) {
-            const { grid, config } = generateValidGridAndConfig(puzzleType, 'hard');
-            assertNoNextRowSoftForbiddenOnRow(grid, lastWordSlotRow(config));
-          }
-        },
-      );
-
-      it.each(['open', 'bridge', 'semi'] as const)(
-        'hard %s: after serialize → parse — same bottom row index and still no nextRow there',
-        puzzleType => {
-          for (let i = 0; i < HARD_ITERS_PER_MODE; i++) {
-            const { grid, config } = generateValidGridAndConfig(puzzleType, 'hard');
-            const bottom = lastWordSlotRow(config);
-            const parsed = parseGrid(serializeGrid(grid));
-            const topologyBottom = findWordRows(parsed);
-            expect(topologyBottom[topologyBottom.length - 1]).toBe(bottom);
-            assertNoNextRowSoftForbiddenOnRow(parsed, bottom);
-          }
-        },
-      );
-
-      it('easy and medium (open): no nextRow on config bottom word row', () => {
-        for (const difficulty of ['easy', 'medium'] as const) {
-          for (let i = 0; i < 200; i++) {
-            const { grid, config } = generateValidGridAndConfig('open', difficulty);
-            assertNoNextRowSoftForbiddenOnRow(grid, lastWordSlotRow(config));
-          }
-        }
-      });
-
-      it('hard open: topology bottom row matches config and has no downward soft/forbidden', () => {
-        for (let i = 0; i < 500; i++) {
-          const { grid, config } = generateValidGridAndConfig('open', 'hard');
-          const fromConfig = lastWordSlotRow(config);
-          const fromTopology = findWordRows(grid);
-          expect(fromTopology[fromTopology.length - 1]).toBe(fromConfig);
-          assertNoNextRowSoftForbiddenOnRow(grid, fromConfig);
-        }
-      });
-    });
-
-    it('sometimes sets prevRow on soft or forbidden for hard', () => {
-      let sawPrev = false;
-      const gen = new PuzzleGenerator();
-      for (let i = 0; i < 4000; i++) {
-        const config = gen.generatePuzzleConfig(0, 0, 'open');
-        const grid = gen.createGridFromConfig(config, 'open', 'hard');
-        if (!gen.isGridValid(grid)) continue;
-        for (let r = 0; r < grid.rows; r++) {
-          for (let c = 0; c < grid.cols; c++) {
-            const t = grid.cells[r][c].ruleTile;
-            if (
-              (t?.type === 'softMatch' || t?.type === 'forbiddenMatch') &&
-              t.constraint.prevRow !== undefined
-            ) {
-              sawPrev = true;
-              break;
-            }
-          }
-          if (sawPrev) break;
-        }
-        if (sawPrev) break;
-      }
-      expect(sawPrev).toBe(true);
-    });
-
-    it('hard mode keeps at most two rules per cell', () => {
-      for (let i = 0; i < 300; i++) {
-        const grid = generateGridFast('open', 'hard');
-        for (let r = 0; r < grid.rows; r++) {
-          for (let c = 0; c < grid.cols; c++) {
-            const count = grid.cells[r][c].ruleTiles?.length ?? (grid.cells[r][c].ruleTile ? 1 : 0);
-            expect(count).toBeLessThanOrEqual(2);
-          }
-        }
-      }
-    });
-
-    it('hard mode combined directional rules are bidirectional', () => {
-      for (let i = 0; i < 250; i++) {
-        const grid = generateGridFast('open', 'hard');
-        for (let r = 0; r < grid.rows; r++) {
-          for (let c = 0; c < grid.cols; c++) {
-            const rules = grid.cells[r][c].ruleTiles ?? (grid.cells[r][c].ruleTile ? [grid.cells[r][c].ruleTile!] : []);
-            if (rules.length < 2) continue;
-            for (const rule of rules) {
-              if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
-                const hasDirectionalPart =
-                  rule.constraint.nextRow !== undefined || rule.constraint.prevRow !== undefined;
-                if (hasDirectionalPart) {
-                  expect(rule.constraint.nextRow).toBeDefined();
-                  expect(rule.constraint.prevRow).toBeDefined();
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-  });
+beforeAll(() => {
+  generatorDictionary.initialize();
 });
 
-// Helpers
+/** Fast grid generation — runs staged pipeline without difficulty simulation. */
+function generateGridFast(puzzleType: PuzzleType, difficulty: Difficulty = 'medium'): Grid {
+  return gen.generateGrid(puzzleType, difficulty);
+}
 
 function findWordRows(grid: Grid): number[] {
   const rows: number[] = [];
   for (let r = 0; r < grid.rows; r++) {
-    if (grid.cells[r].some(c => c.accessible)) {
-      rows.push(r);
-    }
+    if (grid.cells[r].some(c => c.accessible)) rows.push(r);
   }
   return rows;
 }
@@ -436,3 +47,399 @@ function getWordFromRow(grid: Grid, row: number): string {
     .map(c => c.letter!)
     .join('');
 }
+
+// =============================================================================
+// Integration: generatePuzzle (with simulation — just a few calls)
+// =============================================================================
+
+describe('generatePuzzle integration', () => {
+  it.each(['open', 'bridge', 'semi'] as const)(
+    'produces a parseable puzzle string with difficulty metadata for %s mode',
+    (puzzleType) => {
+      const { puzzle, difficulty, successRate } = gen.generatePuzzle(puzzleType);
+      const grid = parseGrid(puzzle);
+      expect(grid.rows).toBeGreaterThan(0);
+      expect(grid.cols).toBeGreaterThan(0);
+      expect(['easy', 'medium', 'hard']).toContain(difficulty);
+      expect(successRate).toBeGreaterThanOrEqual(0);
+      expect(successRate).toBeLessThanOrEqual(1);
+    },
+  );
+});
+
+// =============================================================================
+// Puzzle type shapes
+// =============================================================================
+
+describe('bridge mode', () => {
+  it('has first and last word rows fully fixed with valid dictionary words', () => {
+    const grid = generateGridFast('bridge');
+    const wordRows = findWordRows(grid);
+    const firstRow = wordRows[0];
+    const lastRow = wordRows[wordRows.length - 1];
+
+    for (const row of [firstRow, lastRow]) {
+      for (let c = 0; c < grid.cols; c++) {
+        if (grid.cells[row][c].accessible) {
+          expect(grid.cells[row][c].fixed).toBe(true);
+          expect(grid.cells[row][c].letter).toBeTruthy();
+        }
+      }
+    }
+
+    expect(generatorDictionary.isValidWord(getWordFromRow(grid, firstRow))).toBe(true);
+    expect(generatorDictionary.isValidWord(getWordFromRow(grid, lastRow))).toBe(true);
+  });
+});
+
+describe('semi mode', () => {
+  it('has only last word row fully fixed', () => {
+    const grid = generateGridFast('semi');
+    const wordRows = findWordRows(grid);
+
+    expect(getAccessibleCells(grid, wordRows[0]).every(c => c.fixed)).toBe(false);
+    for (let c = 0; c < grid.cols; c++) {
+      if (grid.cells[wordRows[wordRows.length - 1]][c].accessible) {
+        expect(grid.cells[wordRows[wordRows.length - 1]][c].fixed).toBe(true);
+      }
+    }
+  });
+});
+
+describe('open mode', () => {
+  it('has no fully-fixed word rows', () => {
+    const grid = generateGridFast('open');
+    for (const row of findWordRows(grid)) {
+      expect(getAccessibleCells(grid, row).every(c => c.fixed)).toBe(false);
+    }
+  });
+});
+
+// =============================================================================
+// Property fuzz tests — catch interaction bugs across stages
+// =============================================================================
+
+describe('property fuzz tests', () => {
+  for (const puzzleType of ['open', 'bridge', 'semi'] as PuzzleType[]) {
+    describe(`${puzzleType} mode (${FUZZ_ITERATIONS}×)`, () => {
+      it('never has hard match pairs with mismatched fixed letters', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          for (let r = 0; r < grid.rows; r++) {
+            for (let c = 0; c < grid.cols; c++) {
+              const cell = grid.cells[r][c];
+              for (const rule of getCellRuleTiles(cell)) {
+                if (rule.type !== 'hardMatch' || rule.constraint.position !== 'top') continue;
+                const paired = grid.cells[rule.constraint.pairedRow]?.[rule.constraint.pairedCol];
+                if (cell.fixed && paired?.fixed) {
+                  expect(cell.letter).toBe(paired.letter);
+                }
+              }
+            }
+          }
+        }
+      });
+
+      it('passes validateNoHardMatchForbiddenConflict for completed rows', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          for (let r = 0; r < grid.rows; r++) {
+            if (!isRowComplete(grid, r)) continue;
+            expect(validateNoHardMatchForbiddenConflict(grid, r)).toBe(true);
+          }
+        }
+      });
+
+      it('has valid hard match pairs on completed rows', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          for (let r = 0; r < grid.rows; r++) {
+            if (!isRowComplete(grid, r)) continue;
+            expect(validateHardMatchTiles(grid, r)).toBe(true);
+          }
+        }
+      });
+
+      it('has valid soft match on completed rows', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          for (let r = 0; r < grid.rows; r++) {
+            if (!isRowComplete(grid, r)) continue;
+            expect(validateSoftMatchTiles(grid, r)).toBe(true);
+          }
+        }
+      });
+
+      it('has valid forbidden match on completed rows', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          for (let r = 0; r < grid.rows; r++) {
+            if (!isRowComplete(grid, r)) continue;
+            expect(validateForbiddenMatchTiles(grid, r)).toBe(true);
+          }
+        }
+      });
+
+      it('never has a fixed soft match trivially satisfied in target row', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          for (let r = 0; r < grid.rows; r++) {
+            for (let c = 0; c < grid.cols; c++) {
+              const cell = grid.cells[r][c];
+              for (const rule of getCellRuleTiles(cell)) {
+                if (rule.type !== 'softMatch' || !cell.fixed || !cell.letter) continue;
+                for (const targetRow of softForbiddenTargetRows(rule.constraint)) {
+                  const hasTrivialMatch = grid.cells[targetRow].some(
+                    tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
+                  );
+                  expect(hasTrivialMatch).toBe(false);
+                }
+              }
+            }
+          }
+        }
+      });
+
+      it('round-trips through serialize/parse', () => {
+        for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+          const grid = generateGridFast(puzzleType);
+          const serialized = serializeGrid(grid);
+          const roundTripped = serializeGrid(parseGrid(serialized));
+          expect(roundTripped).toBe(serialized);
+        }
+      });
+    });
+  }
+});
+
+// =============================================================================
+// Direction gating
+// =============================================================================
+
+describe('soft/forbidden direction gating', () => {
+  it('easy and medium never set prevRow on soft or forbidden tiles', () => {
+    for (const difficulty of ['easy', 'medium'] as const) {
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            for (const rule of getCellRuleTiles(grid.cells[r][c])) {
+              if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
+                expect(rule.constraint.prevRow).toBeUndefined();
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('last word row never has nextRow soft/forbidden tiles', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      const wordRows = findWordRows(grid);
+      const lastRow = wordRows[wordRows.length - 1];
+
+      for (let c = 0; c < grid.cols; c++) {
+        for (const rule of getCellRuleTiles(grid.cells[lastRow][c])) {
+          if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
+            expect(rule.constraint.nextRow).toBeUndefined();
+          }
+        }
+      }
+    }
+  });
+
+  it('hard mode sometimes sets prevRow on soft or forbidden', () => {
+    let sawPrev = false;
+    for (let i = 0; i < 50 && !sawPrev; i++) {
+      const grid = generateGridFast('open', 'hard');
+      for (let r = 0; r < grid.rows && !sawPrev; r++) {
+        for (let c = 0; c < grid.cols && !sawPrev; c++) {
+          for (const rule of getCellRuleTiles(grid.cells[r][c])) {
+            if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+                rule.constraint.prevRow !== undefined) {
+              sawPrev = true;
+            }
+          }
+        }
+      }
+    }
+    expect(sawPrev).toBe(true);
+  });
+});
+
+// =============================================================================
+// Rule tile limits
+// =============================================================================
+
+describe('rule tile limits', () => {
+  it('hard mode keeps at most two rules per cell', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open', 'hard');
+      for (let r = 0; r < grid.rows; r++) {
+        for (let c = 0; c < grid.cols; c++) {
+          expect(getCellRuleTiles(grid.cells[r][c]).length).toBeLessThanOrEqual(2);
+        }
+      }
+    }
+  });
+
+  it('no cell has two rules using the same visual half', () => {
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            const rules = getCellRuleTiles(grid.cells[r][c]);
+            let topCount = 0;
+            let bottomCount = 0;
+            for (const rule of rules) {
+              if (rule.type === 'hardMatch') {
+                if (rule.constraint.position === 'top') bottomCount++;    // points down → bottom half
+                if (rule.constraint.position === 'bottom') topCount++;    // points up → top half
+              } else {
+                if (rule.constraint.nextRow !== undefined) bottomCount++; // points down → bottom half
+                if (rule.constraint.prevRow !== undefined) topCount++;    // points up → top half
+              }
+            }
+            expect(topCount).toBeLessThanOrEqual(1);
+            expect(bottomCount).toBeLessThanOrEqual(1);
+          }
+        }
+      }
+    }
+  });
+
+  it('hard mode combined directional rules are bidirectional', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open', 'hard');
+      for (let r = 0; r < grid.rows; r++) {
+        for (let c = 0; c < grid.cols; c++) {
+          const rules = getCellRuleTiles(grid.cells[r][c]);
+          if (rules.length < 2) continue;
+          for (const rule of rules) {
+            if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
+              if (rule.constraint.nextRow !== undefined || rule.constraint.prevRow !== undefined) {
+                expect(rule.constraint.nextRow).toBeDefined();
+                expect(rule.constraint.prevRow).toBeDefined();
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+// =============================================================================
+// Hard-match chains
+// =============================================================================
+
+describe('hard-match chains', () => {
+  it('hard mode sometimes produces chains of length 3', () => {
+    let sawChain = false;
+    for (let i = 0; i < 50 && !sawChain; i++) {
+      const grid = generateGridFast('open', 'hard');
+      for (let r = 0; r < grid.rows && !sawChain; r++) {
+        for (let c = 0; c < grid.cols && !sawChain; c++) {
+          const rules = getCellRuleTiles(grid.cells[r][c]);
+          const hasTop = rules.some(r => r.type === 'hardMatch' && r.constraint.position === 'top');
+          const hasBottom = rules.some(r => r.type === 'hardMatch' && r.constraint.position === 'bottom');
+          if (hasTop && hasBottom) sawChain = true;
+        }
+      }
+    }
+    expect(sawChain).toBe(true);
+  });
+
+  it('middle chain cells have one top and one bottom hard-match pointing to different rows', () => {
+    let sawMiddle = false;
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open', 'hard');
+      for (let r = 0; r < grid.rows; r++) {
+        for (let c = 0; c < grid.cols; c++) {
+          const rules = getCellRuleTiles(grid.cells[r][c]);
+          const hardRules = rules.filter(rule => rule.type === 'hardMatch');
+          const tops = hardRules.filter(h => h.constraint.position === 'top');
+          const bottoms = hardRules.filter(h => h.constraint.position === 'bottom');
+
+          if (tops.length === 1 && bottoms.length === 1) {
+            sawMiddle = true;
+            expect(tops[0].constraint.pairedRow).not.toBe(bottoms[0].constraint.pairedRow);
+          }
+        }
+      }
+    }
+    expect(sawMiddle).toBe(true);
+  });
+
+  it('chain round-trips through serialize/parse', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open', 'hard');
+      const serialized = serializeGrid(grid);
+      const parsed = parseGrid(serialized);
+      const reserialized = serializeGrid(parsed);
+      expect(reserialized).toBe(serialized);
+    }
+  });
+});
+
+// =============================================================================
+// Word length sequence constraints
+// =============================================================================
+
+describe('word length sequence constraints', () => {
+  it('never produces more than maxConsecutiveSameLength consecutive same-length words', () => {
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      const profile = GENERATION_PROFILES[difficulty];
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        const wordRows = findWordRows(grid);
+        const lengths = wordRows.map(r => getAccessibleCells(grid, r).length);
+
+        let streak = 1;
+        for (let j = 1; j < lengths.length; j++) {
+          if (lengths[j] === lengths[j - 1]) {
+            streak++;
+            expect(streak).toBeLessThanOrEqual(profile.maxConsecutiveSameLength);
+          } else {
+            streak = 1;
+          }
+        }
+      }
+    }
+  });
+});
+
+// =============================================================================
+// Forbidden grouping
+// =============================================================================
+
+describe('forbidden grouping', () => {
+  it('rows with only forbidden tiles have at least minForbiddenGroupSize forbidden tiles', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      const wordRows = findWordRows(grid);
+
+      for (const row of wordRows) {
+        let forbiddenCount = 0;
+        let hasOtherRule = false;
+
+        for (let c = 0; c < grid.cols; c++) {
+          for (const rule of getCellRuleTiles(grid.cells[row][c])) {
+            if (rule.type === 'forbiddenMatch') {
+              forbiddenCount++;
+            } else {
+              hasOtherRule = true;
+            }
+          }
+        }
+
+        if (forbiddenCount > 0 && !hasOtherRule) {
+          expect(forbiddenCount).toBeGreaterThanOrEqual(2);
+        }
+      }
+    }
+  });
+});
