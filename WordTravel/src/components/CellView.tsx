@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Cell, isBidirectionalSoftForbidden } from '../engine/types';
+import { Cell, RuleTile, isBidirectionalSoftForbidden } from '../engine/types';
 import { RuleFulfillment } from '../engine/GameLogic';
 import { colors, layout } from '../theme';
 import { BIDIRECTIONAL_MODIFIER_OFFSET_PX } from '../tileTheme';
@@ -12,8 +12,11 @@ interface CellViewProps {
   tileSize: number;
   ghostLetter?: string;
   active?: boolean;
-  modifierFulfillment?: RuleFulfillment;
-  modifierRotation?: 0 | 180;
+  modifiers?: Array<{
+    rule: RuleTile;
+    fulfillment: RuleFulfillment;
+    rotation: 0 | 180;
+  }>;
   blinkRuleStroke?: boolean;
 }
 
@@ -23,19 +26,14 @@ export function CellView({
   tileSize,
   ghostLetter,
   active,
-  modifierFulfillment,
-  modifierRotation,
+  modifiers = [],
   blinkRuleStroke,
 }: CellViewProps) {
   if (!cell.accessible) {
     return <View style={{ width: cellSize, height: cellSize }} />;
   }
 
-  const ruleTile = cell.ruleTile;
-  const showModifier =
-    ruleTile?.type === 'hardMatch' ||
-    ruleTile?.type === 'softMatch' ||
-    ruleTile?.type === 'forbiddenMatch';
+  const showModifier = modifiers.length > 0;
 
   return (
     <View style={[styles.cellOuter, { width: cellSize, height: cellSize }]}>
@@ -46,32 +44,41 @@ export function CellView({
         active && { borderColor: colors.tileBorderActive },
         blinkRuleStroke && { borderColor: colors.ruleBroken },
       ]}>
-        {showModifier && ruleTile && modifierFulfillment != null && (
-          (ruleTile.type === 'softMatch' || ruleTile.type === 'forbiddenMatch') &&
-          isBidirectionalSoftForbidden(ruleTile) ? (
-            <View style={styles.modifierStack} pointerEvents="none">
-              <View style={bidirectionalDownLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}>
-                <ModifierOverlay
-                  ruleType={ruleTile.type}
-                  fulfillment={modifierFulfillment}
-                  rotation={0}
-                />
+        {showModifier && (
+          <View style={styles.modifierStack} pointerEvents="none">
+            {modifiers.slice(0, 2).map((modifier, idx) => (
+              <View
+                key={`modifier-${idx}`}
+                style={idx === 0 ? bidirectionalDownLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX) : bidirectionalUpLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}
+              >
+                {(modifier.rule.type === 'softMatch' || modifier.rule.type === 'forbiddenMatch') &&
+                isBidirectionalSoftForbidden(modifier.rule) ? (
+                  <View style={styles.modifierStack} pointerEvents="none">
+                    <View style={bidirectionalDownLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}>
+                      <ModifierOverlay
+                        ruleType={modifier.rule.type}
+                        fulfillment={modifier.fulfillment}
+                        rotation={0}
+                      />
+                    </View>
+                    <View style={bidirectionalUpLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}>
+                      <ModifierOverlay
+                        ruleType={modifier.rule.type}
+                        fulfillment={modifier.fulfillment}
+                        rotation={180}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <ModifierOverlay
+                    ruleType={modifier.rule.type}
+                    fulfillment={modifier.fulfillment}
+                    rotation={modifier.rotation}
+                  />
+                )}
               </View>
-              <View style={bidirectionalUpLayerStyle(BIDIRECTIONAL_MODIFIER_OFFSET_PX)}>
-                <ModifierOverlay
-                  ruleType={ruleTile.type}
-                  fulfillment={modifierFulfillment}
-                  rotation={180}
-                />
-              </View>
-            </View>
-          ) : (
-            <ModifierOverlay
-              ruleType={ruleTile.type}
-              fulfillment={modifierFulfillment}
-              rotation={modifierRotation ?? 0}
-            />
-          )
+            ))}
+          </View>
         )}
         <View style={styles.cellContent}>
           {cell.letter ? (

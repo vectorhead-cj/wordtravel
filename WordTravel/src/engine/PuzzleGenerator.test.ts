@@ -377,6 +377,40 @@ describe('PuzzleGenerator', () => {
       }
       expect(sawPrev).toBe(true);
     });
+
+    it('hard mode keeps at most two rules per cell', () => {
+      for (let i = 0; i < 300; i++) {
+        const grid = generateGridFast('open', 'hard');
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            const count = grid.cells[r][c].ruleTiles?.length ?? (grid.cells[r][c].ruleTile ? 1 : 0);
+            expect(count).toBeLessThanOrEqual(2);
+          }
+        }
+      }
+    });
+
+    it('hard mode combined directional rules are bidirectional', () => {
+      for (let i = 0; i < 250; i++) {
+        const grid = generateGridFast('open', 'hard');
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            const rules = grid.cells[r][c].ruleTiles ?? (grid.cells[r][c].ruleTile ? [grid.cells[r][c].ruleTile!] : []);
+            if (rules.length < 2) continue;
+            for (const rule of rules) {
+              if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
+                const hasDirectionalPart =
+                  rule.constraint.nextRow !== undefined || rule.constraint.prevRow !== undefined;
+                if (hasDirectionalPart) {
+                  expect(rule.constraint.nextRow).toBeDefined();
+                  expect(rule.constraint.prevRow).toBeDefined();
+                }
+              }
+            }
+          }
+        }
+      }
+    });
   });
 });
 

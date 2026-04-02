@@ -1,4 +1,4 @@
-import { Grid, Difficulty, cloneGrid, softForbiddenTargetRows } from './types';
+import { Grid, Difficulty, cloneGrid, getCellRuleTiles, softForbiddenTargetRows } from './types';
 import { ConstraintQuery, generatorDictionary } from './Dictionary';
 import { PUZZLE_CONFIG } from './config';
 
@@ -106,8 +106,9 @@ function getCandidatesForRow(
       continue;
     }
 
-    if (cell.ruleTile?.type === 'hardMatch') {
-      const { pairedRow, pairedCol } = cell.ruleTile.constraint;
+    for (const rule of getCellRuleTiles(cell)) {
+      if (rule.type !== 'hardMatch') continue;
+      const { pairedRow, pairedCol } = rule.constraint;
       const pairedCell = grid.cells[pairedRow]?.[pairedCol];
       if (pairedCell?.letter) {
         positionConstraints.set(i, pairedCell.letter.toLowerCase());
@@ -122,15 +123,16 @@ function getCandidatesForRow(
     if (!isRowFilled(grid, sourceRow)) continue;
     for (let col = 0; col < grid.cols; col++) {
       const cell = grid.cells[sourceRow][col];
-      if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
-
-      if (cell.ruleTile.type === 'softMatch' && softForbiddenTargetRows(cell.ruleTile.constraint).includes(row)) {
-        mustContain.push(cell.letter.toLowerCase());
-      } else if (
-        cell.ruleTile.type === 'forbiddenMatch' &&
-        softForbiddenTargetRows(cell.ruleTile.constraint).includes(row)
-      ) {
-        mustNotContain.add(cell.letter.toLowerCase());
+      if (!cell.accessible || !cell.letter) continue;
+      for (const rule of getCellRuleTiles(cell)) {
+        if (rule.type === 'softMatch' && softForbiddenTargetRows(rule.constraint).includes(row)) {
+          mustContain.push(cell.letter.toLowerCase());
+        } else if (
+          rule.type === 'forbiddenMatch' &&
+          softForbiddenTargetRows(rule.constraint).includes(row)
+        ) {
+          mustNotContain.add(cell.letter.toLowerCase());
+        }
       }
     }
   }
@@ -139,38 +141,39 @@ function getCandidatesForRow(
   for (let i = 0; i < accessibleCols.length; i++) {
     const col = accessibleCols[i];
     const cell = grid.cells[row][col];
-    if (cell.ruleTile?.type !== 'softMatch') continue;
-
-    const constraint = cell.ruleTile.constraint;
-    const letterSets: Set<string>[] = [];
-    if (constraint.nextRow !== undefined && isRowFilled(grid, constraint.nextRow)) {
-      const letters = new Set<string>();
-      for (let c = 0; c < grid.cols; c++) {
-        const t = grid.cells[constraint.nextRow][c];
-        if (t.accessible && t.letter) {
-          letters.add(t.letter.toLowerCase());
+    for (const rule of getCellRuleTiles(cell)) {
+      if (rule.type !== 'softMatch') continue;
+      const constraint = rule.constraint;
+      const letterSets: Set<string>[] = [];
+      if (constraint.nextRow !== undefined && isRowFilled(grid, constraint.nextRow)) {
+        const letters = new Set<string>();
+        for (let c = 0; c < grid.cols; c++) {
+          const t = grid.cells[constraint.nextRow][c];
+          if (t.accessible && t.letter) {
+            letters.add(t.letter.toLowerCase());
+          }
         }
+        if (letters.size > 0) letterSets.push(letters);
       }
-      if (letters.size > 0) letterSets.push(letters);
-    }
-    if (constraint.prevRow !== undefined && isRowFilled(grid, constraint.prevRow)) {
-      const letters = new Set<string>();
-      for (let c = 0; c < grid.cols; c++) {
-        const t = grid.cells[constraint.prevRow][c];
-        if (t.accessible && t.letter) {
-          letters.add(t.letter.toLowerCase());
+      if (constraint.prevRow !== undefined && isRowFilled(grid, constraint.prevRow)) {
+        const letters = new Set<string>();
+        for (let c = 0; c < grid.cols; c++) {
+          const t = grid.cells[constraint.prevRow][c];
+          if (t.accessible && t.letter) {
+            letters.add(t.letter.toLowerCase());
+          }
         }
+        if (letters.size > 0) letterSets.push(letters);
       }
-      if (letters.size > 0) letterSets.push(letters);
-    }
-    if (letterSets.length === 0) continue;
+      if (letterSets.length === 0) continue;
 
-    let allowed = letterSets[0];
-    for (let k = 1; k < letterSets.length; k++) {
-      allowed = new Set([...allowed].filter(x => letterSets[k].has(x)));
-    }
-    if (allowed.size > 0) {
-      forwardSoftAllowedByPos.set(i, allowed);
+      let allowed = letterSets[0];
+      for (let k = 1; k < letterSets.length; k++) {
+        allowed = new Set([...allowed].filter(x => letterSets[k].has(x)));
+      }
+      if (allowed.size > 0) {
+        forwardSoftAllowedByPos.set(i, allowed);
+      }
     }
   }
 
@@ -214,63 +217,64 @@ function getCandidatesForRow(
   for (let i = 0; i < accessibleCols.length; i++) {
     const col = accessibleCols[i];
     const cell = grid.cells[targetRow][col];
-    if (cell.ruleTile?.type !== 'forbiddenMatch') continue;
+    for (const rule of getCellRuleTiles(cell)) {
+      if (rule.type !== 'forbiddenMatch') continue;
+      const requiredUnion = new Set<string>();
+      for (const destRow of softForbiddenTargetRows(rule.constraint)) {
+        const destRowCells = grid.cells[destRow];
+        if (!destRowCells) continue;
 
-    const requiredUnion = new Set<string>();
-    for (const destRow of softForbiddenTargetRows(cell.ruleTile.constraint)) {
-      const destRowCells = grid.cells[destRow];
-      if (!destRowCells) continue;
+        const requiredInDest = new Set<string>();
 
-      const requiredInDest = new Set<string>();
-
-      if (isRowFilled(grid, destRow)) {
-        for (const destCell of destRowCells) {
-          if (destCell.accessible && destCell.letter) {
-            requiredInDest.add(destCell.letter.toLowerCase());
+        if (isRowFilled(grid, destRow)) {
+          for (const destCell of destRowCells) {
+            if (destCell.accessible && destCell.letter) {
+              requiredInDest.add(destCell.letter.toLowerCase());
+            }
           }
-        }
-      } else {
-        for (const destCell of destRowCells) {
-          if (!destCell.accessible) continue;
+        } else {
+          for (const destCell of destRowCells) {
+            if (!destCell.accessible) continue;
 
-          if (destCell.fixed && destCell.letter) {
-            requiredInDest.add(destCell.letter.toLowerCase());
-          } else if (destCell.ruleTile?.type === 'hardMatch') {
-            const { pairedRow, pairedCol } = destCell.ruleTile.constraint;
-            const pairedCell = grid.cells[pairedRow]?.[pairedCol];
-            if (pairedCell?.letter) {
-              requiredInDest.add(pairedCell.letter.toLowerCase());
-            } else if (pairedRow === targetRow) {
-              const required = colToHardMatchLetter.get(pairedCol);
-              if (required) requiredInDest.add(required);
+            if (destCell.fixed && destCell.letter) {
+              requiredInDest.add(destCell.letter.toLowerCase());
+            }
+            for (const destRule of getCellRuleTiles(destCell)) {
+              if (destRule.type !== 'hardMatch') continue;
+              const { pairedRow, pairedCol } = destRule.constraint;
+              const pairedCell = grid.cells[pairedRow]?.[pairedCol];
+              if (pairedCell?.letter) {
+                requiredInDest.add(pairedCell.letter.toLowerCase());
+              } else if (pairedRow === targetRow) {
+                const required = colToHardMatchLetter.get(pairedCol);
+                if (required) requiredInDest.add(required);
+              }
+            }
+          }
+
+          for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+            if (!isRowFilled(grid, sourceRow)) continue;
+            for (let sourceCol = 0; sourceCol < grid.cols; sourceCol++) {
+              const sourceCell = grid.cells[sourceRow][sourceCol];
+              if (!sourceCell.accessible || !sourceCell.letter) continue;
+              for (const sourceRule of getCellRuleTiles(sourceCell)) {
+                if (sourceRule.type !== 'softMatch') continue;
+                if (softForbiddenTargetRows(sourceRule.constraint).includes(destRow)) {
+                  requiredInDest.add(sourceCell.letter.toLowerCase());
+                }
+              }
             }
           }
         }
 
-        for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
-          if (!isRowFilled(grid, sourceRow)) continue;
-          for (let sourceCol = 0; sourceCol < grid.cols; sourceCol++) {
-            const sourceCell = grid.cells[sourceRow][sourceCol];
-            const sc = sourceCell.ruleTile?.type === 'softMatch' ? sourceCell.ruleTile.constraint : null;
-            if (
-              sourceCell.accessible &&
-              sc &&
-              softForbiddenTargetRows(sc).includes(destRow) &&
-              sourceCell.letter
-            ) {
-              requiredInDest.add(sourceCell.letter.toLowerCase());
-            }
-          }
+        for (const letter of requiredInDest) {
+          requiredUnion.add(letter);
         }
       }
 
-      for (const letter of requiredInDest) {
-        requiredUnion.add(letter);
+      if (requiredUnion.size > 0) {
+        positionForbiddenLetters.set(i, requiredUnion);
       }
-    }
-
-    if (requiredUnion.size > 0) {
-      positionForbiddenLetters.set(i, requiredUnion);
     }
   }
 

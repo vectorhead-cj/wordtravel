@@ -1,4 +1,4 @@
-import { Grid, Cell, RuleTile, SoftForbiddenConstraint } from './types';
+import { Grid, Cell, RuleTile, SoftForbiddenConstraint, addCellRuleTile, getCellRuleTiles, setCellRuleTiles } from './types';
 
 const COMBINING_CIRCUMFLEX = '\u0302'; // hard match
 const COMBINING_TILDE = '\u0303'; // soft match → next row
@@ -29,59 +29,88 @@ function filterKnownSortedMarks(nfdTail: string): string {
     .join('');
 }
 
-function ruleFromCombiningMarks(marks: string, row: number, col: number): RuleTile | undefined {
-  const hasHard = marks.includes(COMBINING_CIRCUMFLEX);
-  const hasTilde = marks.includes(COMBINING_TILDE);
-  const hasSoftUp = marks.includes(COMBINING_SOFT_UP);
-  const hasDia = marks.includes(COMBINING_DIAERESIS);
-  const hasForbUp = marks.includes(COMBINING_FORBIDDEN_UP);
+function consumeDirectionalRules(
+  downCount: number,
+  upCount: number,
+  type: 'softMatch' | 'forbiddenMatch',
+  row: number,
+): RuleTile[] {
+  const rules: RuleTile[] = [];
+  let down = downCount;
+  let up = upCount;
 
-  if (hasHard) {
-    if (marks !== COMBINING_CIRCUMFLEX) return undefined;
-    return {
-      type: 'hardMatch',
-      constraint: { pairedRow: row + 1, pairedCol: col, position: 'top' },
-    };
-  }
-
-  if (hasTilde || hasSoftUp) {
-    if (hasDia || hasForbUp) return undefined;
+  while (down > 0 || up > 0) {
     const constraint: SoftForbiddenConstraint = {};
-    if (hasTilde) constraint.nextRow = row + 1;
-    if (hasSoftUp) constraint.prevRow = row - 1;
-    if (softForbiddenConstraintEmpty(constraint)) return undefined;
-    return { type: 'softMatch', constraint };
+    if (down > 0) {
+      constraint.nextRow = row + 1;
+      down--;
+    }
+    if (up > 0) {
+      constraint.prevRow = row - 1;
+      up--;
+    }
+    rules.push({ type, constraint } as RuleTile);
   }
 
-  if (hasDia || hasForbUp) {
-    const constraint: SoftForbiddenConstraint = {};
-    if (hasDia) constraint.nextRow = row + 1;
-    if (hasForbUp) constraint.prevRow = row - 1;
-    if (softForbiddenConstraintEmpty(constraint)) return undefined;
-    return { type: 'forbiddenMatch', constraint };
-  }
-
-  return undefined;
+  return rules;
 }
 
-function combiningFromRule(tile: RuleTile): string | null {
-  if (tile.type === 'hardMatch' && tile.constraint.position === 'bottom') return null;
-  if (tile.type === 'hardMatch') return COMBINING_CIRCUMFLEX;
+function rulesFromCombiningMarks(marks: string, row: number, col: number): RuleTile[] | undefined {
+  const counts = new Map<string, number>();
+  for (const mark of marks) {
+    counts.set(mark, (counts.get(mark) ?? 0) + 1);
+  }
+
+  const rules: RuleTile[] = [];
+  const hardCount = counts.get(COMBINING_CIRCUMFLEX) ?? 0;
+  for (let i = 0; i < hardCount; i++) {
+    rules.push({
+      type: 'hardMatch',
+      constraint: { pairedRow: row + 1, pairedCol: col, position: 'top' },
+    });
+  }
+
+  rules.push(
+    ...consumeDirectionalRules(
+      counts.get(COMBINING_TILDE) ?? 0,
+      counts.get(COMBINING_SOFT_UP) ?? 0,
+      'softMatch',
+      row,
+    ),
+  );
+  rules.push(
+    ...consumeDirectionalRules(
+      counts.get(COMBINING_DIAERESIS) ?? 0,
+      counts.get(COMBINING_FORBIDDEN_UP) ?? 0,
+      'forbiddenMatch',
+      row,
+    ),
+  );
+
+  if (rules.length === 0 || rules.length > 2) return undefined;
+  return rules;
+}
+
+function combiningFromRule(tile: RuleTile): string[] {
+  if (tile.type === 'hardMatch') {
+    return tile.constraint.position === 'bottom' ? [] : [COMBINING_CIRCUMFLEX];
+  }
   if (tile.type === 'softMatch') {
     const parts: string[] = [];
     if (tile.constraint.nextRow !== undefined) parts.push(COMBINING_TILDE);
     if (tile.constraint.prevRow !== undefined) parts.push(COMBINING_SOFT_UP);
-    if (parts.length === 0) return null;
-    return parts.sort().join('');
+    return parts;
   }
-  if (tile.type === 'forbiddenMatch') {
-    const parts: string[] = [];
-    if (tile.constraint.nextRow !== undefined) parts.push(COMBINING_DIAERESIS);
-    if (tile.constraint.prevRow !== undefined) parts.push(COMBINING_FORBIDDEN_UP);
-    if (parts.length === 0) return null;
-    return parts.sort().join('');
-  }
-  return null;
+  const parts: string[] = [];
+  if (tile.constraint.nextRow !== undefined) parts.push(COMBINING_DIAERESIS);
+  if (tile.constraint.prevRow !== undefined) parts.push(COMBINING_FORBIDDEN_UP);
+  return parts;
+}
+
+function combiningFromRules(tiles: RuleTile[]): string | null {
+  const parts = tiles.flatMap(combiningFromRule).sort();
+  if (parts.length === 0) return null;
+  return parts.join('');
 }
 
 interface ParsedChar {
@@ -156,7 +185,7 @@ export function parseGrid(notation: string, options?: ParseGridOptions): Grid {
       }
 
       const isLetter = /^[A-Z]$/i.test(base);
-      const rule = combining ? ruleFromCombiningMarks(combining, r, c) : undefined;
+      const ruleTiles = combining ? rulesFromCombiningMarks(combining, r, c) : undefined;
 
       if (isLetter) {
         const upper = base.toUpperCase();
@@ -168,7 +197,8 @@ export function parseGrid(notation: string, options?: ParseGridOptions): Grid {
               accessible: true,
               validation: 'none',
               fixed: false,
-              ruleTile: rule,
+              ruleTile: ruleTiles?.[0],
+              ruleTiles,
             }
           : {
               letter: upper,
@@ -176,7 +206,8 @@ export function parseGrid(notation: string, options?: ParseGridOptions): Grid {
               accessible: true,
               validation: 'correct',
               fixed: true,
-              ruleTile: rule,
+              ruleTile: ruleTiles?.[0],
+              ruleTiles,
             };
       } else {
         cells[r][c] = {
@@ -184,7 +215,8 @@ export function parseGrid(notation: string, options?: ParseGridOptions): Grid {
           state: 'empty',
           accessible: true,
           validation: 'none',
-          ruleTile: rule,
+          ruleTile: ruleTiles?.[0],
+          ruleTiles,
         };
       }
     }
@@ -194,16 +226,25 @@ export function parseGrid(notation: string, options?: ParseGridOptions): Grid {
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cell = cells[r][c];
-      if (cell.ruleTile?.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
-        const targetRow = cell.ruleTile.constraint.pairedRow;
-        const targetCol = cell.ruleTile.constraint.pairedCol;
-        if (targetRow < rows && targetCol < cols) {
-          const target = cells[targetRow][targetCol];
-          if (!target.ruleTile) {
-            target.ruleTile = {
-              type: 'hardMatch',
-              constraint: { pairedRow: r, pairedCol: c, position: 'bottom' },
-            };
+      for (const rule of getCellRuleTiles(cell)) {
+        if (rule.type === 'hardMatch' && rule.constraint.position === 'top') {
+          const targetRow = rule.constraint.pairedRow;
+          const targetCol = rule.constraint.pairedCol;
+          if (targetRow < rows && targetCol < cols) {
+            const target = cells[targetRow][targetCol];
+            const hasBottom = getCellRuleTiles(target).some(
+              t =>
+                t.type === 'hardMatch' &&
+                t.constraint.position === 'bottom' &&
+                t.constraint.pairedRow === r &&
+                t.constraint.pairedCol === c,
+            );
+            if (!hasBottom) {
+              addCellRuleTile(target, {
+                type: 'hardMatch',
+                constraint: { pairedRow: r, pairedCol: c, position: 'bottom' },
+              });
+            }
           }
         }
       }
@@ -226,8 +267,7 @@ export function serializeGrid(grid: Grid): string {
         continue;
       }
 
-      const rule = cell.ruleTile;
-      const combining = rule ? combiningFromRule(rule) : null;
+      const combining = combiningFromRules(getCellRuleTiles(cell));
       const hasLetter = cell.fixed && cell.letter;
 
       if (hasLetter && combining) {
@@ -267,8 +307,7 @@ export function serializeGridDebug(grid: Grid): string {
         continue;
       }
 
-      const rule = cell.ruleTile;
-      const combining = rule ? combiningFromRule(rule) : null;
+      const combining = combiningFromRules(getCellRuleTiles(cell));
       const hasLetter = Boolean(cell.letter);
       const letterGlyph = hasLetter
         ? cell.fixed
@@ -346,8 +385,9 @@ export function addPadding(grid: Grid, top: number, bottom: number): Grid {
   // Shift rule tile references in existing cells
   const shiftedCells = grid.cells.map(row =>
     row.map(cell => {
-      if (!cell.ruleTile) return { ...cell };
-      return { ...cell, ruleTile: shiftRuleTile(cell.ruleTile, top) };
+      if (!cell.ruleTiles || cell.ruleTiles.length === 0) return { ...cell };
+      const shiftedRules = cell.ruleTiles.map(tile => shiftRuleTile(tile, top));
+      return { ...cell, ruleTile: shiftedRules[0], ruleTiles: shiftedRules };
     })
   );
 

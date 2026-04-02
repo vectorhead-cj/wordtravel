@@ -1,4 +1,4 @@
-import { Grid, GameMode, cloneGrid, softForbiddenTargetRows } from './types';
+import { Grid, GameMode, RuleTile, cloneGrid, getCellRuleTiles, softForbiddenTargetRows } from './types';
 import { playerDictionary } from './Dictionary';
 
 
@@ -46,13 +46,13 @@ export function validateSpelling(grid: Grid, row: number): boolean {
 export function validateHardMatchTiles(grid: Grid, row: number): boolean {
   for (let col = 0; col < grid.cols; col++) {
     const currentCell = grid.cells[row][col];
-    
-    if (currentCell.accessible && currentCell.ruleTile?.type === 'hardMatch') {
-      const { pairedRow, pairedCol } = currentCell.ruleTile.constraint;
+    if (!currentCell.accessible) continue;
+
+    for (const rule of getCellRuleTiles(currentCell)) {
+      if (rule.type !== 'hardMatch') continue;
+      const { pairedRow, pairedCol } = rule.constraint;
       const pairedCell = grid.cells[pairedRow][pairedCol];
-
       if (!pairedCell.letter) continue;
-
       if (currentCell.letter !== pairedCell.letter) {
         return false;
       }
@@ -66,45 +66,47 @@ export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
-
-      if (!sourceCell.accessible || sourceCell.ruleTile?.type !== 'softMatch') continue;
+      if (!sourceCell.accessible) continue;
 
       if (!isRowComplete(grid, sourceRow)) continue;
 
-      const letterToFind = sourceCell.letter;
-      if (!letterToFind) {
-        return false;
-      }
-
-      const softTargets = softForbiddenTargetRows(sourceCell.ruleTile.constraint);
-      const multiTargetSoft = softTargets.length > 1;
-      if (
-        sourceRow === row &&
-        multiTargetSoft &&
-        !softTargets.every(t => isRowComplete(grid, t))
-      ) {
-        return false;
-      }
-
-      for (const targetRow of softTargets) {
-        const validatingTargetRow = targetRow === row;
-        const validatingSourceRowWithKnownTarget =
-          sourceRow === row &&
-          (multiTargetSoft || isRowComplete(grid, targetRow));
-
-        if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
-
-        let foundInTargetRow = false;
-        for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
-          const targetCell = grid.cells[targetRow][targetCol];
-          if (targetCell.accessible && targetCell.letter === letterToFind) {
-            foundInTargetRow = true;
-            break;
-          }
+      for (const rule of getCellRuleTiles(sourceCell)) {
+        if (rule.type !== 'softMatch') continue;
+        const letterToFind = sourceCell.letter;
+        if (!letterToFind) {
+          return false;
         }
 
-        if (!foundInTargetRow) {
+        const softTargets = softForbiddenTargetRows(rule.constraint);
+        const multiTargetSoft = softTargets.length > 1;
+        if (
+          sourceRow === row &&
+          multiTargetSoft &&
+          !softTargets.every(t => isRowComplete(grid, t))
+        ) {
           return false;
+        }
+
+        for (const targetRow of softTargets) {
+          const validatingTargetRow = targetRow === row;
+          const validatingSourceRowWithKnownTarget =
+            sourceRow === row &&
+            (multiTargetSoft || isRowComplete(grid, targetRow));
+
+          if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
+
+          let foundInTargetRow = false;
+          for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
+            const targetCell = grid.cells[targetRow][targetCol];
+            if (targetCell.accessible && targetCell.letter === letterToFind) {
+              foundInTargetRow = true;
+              break;
+            }
+          }
+
+          if (!foundInTargetRow) {
+            return false;
+          }
         }
       }
     }
@@ -117,24 +119,26 @@ export function validateForbiddenMatchTiles(grid: Grid, row: number): boolean {
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
-
-      if (!sourceCell.accessible || sourceCell.ruleTile?.type !== 'forbiddenMatch') continue;
+      if (!sourceCell.accessible) continue;
 
       if (!isRowComplete(grid, sourceRow)) continue;
 
-      const forbiddenLetter = sourceCell.letter;
-      if (!forbiddenLetter) continue;
+      for (const rule of getCellRuleTiles(sourceCell)) {
+        if (rule.type !== 'forbiddenMatch') continue;
+        const forbiddenLetter = sourceCell.letter;
+        if (!forbiddenLetter) continue;
 
-      for (const targetRow of softForbiddenTargetRows(sourceCell.ruleTile.constraint)) {
-        const validatingTargetRow = targetRow === row;
-        const validatingSourceRow = sourceRow === row;
+        for (const targetRow of softForbiddenTargetRows(rule.constraint)) {
+          const validatingTargetRow = targetRow === row;
+          const validatingSourceRow = sourceRow === row;
 
-        if (!validatingTargetRow && !validatingSourceRow) continue;
+          if (!validatingTargetRow && !validatingSourceRow) continue;
 
-        for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
-          const targetCell = grid.cells[targetRow][targetCol];
-          if (targetCell.accessible && targetCell.letter === forbiddenLetter) {
-            return false;
+          for (let targetCol = 0; targetCol < grid.cols; targetCol++) {
+            const targetCell = grid.cells[targetRow][targetCol];
+            if (targetCell.accessible && targetCell.letter === forbiddenLetter) {
+              return false;
+            }
           }
         }
       }
@@ -150,21 +154,23 @@ export function validateNoHardMatchForbiddenConflict(grid: Grid, row: number): b
 
   for (let col = 0; col < grid.cols; col++) {
     const cell = grid.cells[row][col];
-    if (!cell.accessible || !cell.letter || !cell.ruleTile) continue;
+    if (!cell.accessible || !cell.letter) continue;
 
-    if (cell.ruleTile.type === 'hardMatch' && cell.ruleTile.constraint.position === 'top') {
-      const target = cell.ruleTile.constraint.pairedRow;
-      if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
-      requiredInRow.get(target)!.add(cell.letter);
-    } else if (cell.ruleTile.type === 'softMatch') {
-      for (const target of softForbiddenTargetRows(cell.ruleTile.constraint)) {
+    for (const rule of getCellRuleTiles(cell)) {
+      if (rule.type === 'hardMatch' && rule.constraint.position === 'top') {
+        const target = rule.constraint.pairedRow;
         if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
         requiredInRow.get(target)!.add(cell.letter);
-      }
-    } else if (cell.ruleTile.type === 'forbiddenMatch') {
-      for (const target of softForbiddenTargetRows(cell.ruleTile.constraint)) {
-        if (!bannedFromRow.has(target)) bannedFromRow.set(target, new Set());
-        bannedFromRow.get(target)!.add(cell.letter);
+      } else if (rule.type === 'softMatch') {
+        for (const target of softForbiddenTargetRows(rule.constraint)) {
+          if (!requiredInRow.has(target)) requiredInRow.set(target, new Set());
+          requiredInRow.get(target)!.add(cell.letter);
+        }
+      } else if (rule.type === 'forbiddenMatch') {
+        for (const target of softForbiddenTargetRows(rule.constraint)) {
+          if (!bannedFromRow.has(target)) bannedFromRow.set(target, new Set());
+          bannedFromRow.get(target)!.add(cell.letter);
+        }
       }
     }
   }
@@ -234,15 +240,17 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
   
   for (let col = 0; col < grid.cols; col++) {
     const cell = grid.cells[row][col];
-    if (cell.accessible && cell.ruleTile) {
-      if (cell.ruleTile.type === 'hardMatch') {
-        hasHardMatchTile = true;
-      }
-      if (cell.ruleTile.type === 'softMatch') {
-        hasSoftMatchTile = true;
-      }
-      if (cell.ruleTile.type === 'forbiddenMatch') {
-        hasForbiddenMatchTile = true;
+    if (cell.accessible) {
+      for (const rule of getCellRuleTiles(cell)) {
+        if (rule.type === 'hardMatch') {
+          hasHardMatchTile = true;
+        }
+        if (rule.type === 'softMatch') {
+          hasSoftMatchTile = true;
+        }
+        if (rule.type === 'forbiddenMatch') {
+          hasForbiddenMatchTile = true;
+        }
       }
     }
   }
@@ -250,13 +258,12 @@ export function getRowValidationState(grid: Grid, row: number): RowValidationSta
   for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
-      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'softMatch') {
-        if (softForbiddenTargetRows(sourceCell.ruleTile.constraint).includes(row)) {
+      if (!sourceCell.accessible) continue;
+      for (const rule of getCellRuleTiles(sourceCell)) {
+        if (rule.type === 'softMatch' && softForbiddenTargetRows(rule.constraint).includes(row)) {
           hasSoftMatchTile = true;
         }
-      }
-      if (sourceCell.accessible && sourceCell.ruleTile?.type === 'forbiddenMatch') {
-        if (softForbiddenTargetRows(sourceCell.ruleTile.constraint).includes(row)) {
+        if (rule.type === 'forbiddenMatch' && softForbiddenTargetRows(rule.constraint).includes(row)) {
           hasForbiddenMatchTile = true;
         }
       }
@@ -298,15 +305,17 @@ export function getRowEvaluationBlockers(grid: Grid, row: number): RowEvaluation
 
   for (let col = 0; col < grid.cols; col++) {
     const rowCell = grid.cells[row][col];
-    if (!rowCell.accessible || !rowCell.ruleTile) continue;
+    if (!rowCell.accessible) continue;
 
-    if (rowCell.ruleTile.type === 'hardMatch') {
-      addRequiredRow(rowCell.ruleTile.constraint.pairedRow);
-      continue;
-    }
+    for (const rule of getCellRuleTiles(rowCell)) {
+      if (rule.type === 'hardMatch') {
+        addRequiredRow(rule.constraint.pairedRow);
+        continue;
+      }
 
-    for (const targetRow of softForbiddenTargetRows(rowCell.ruleTile.constraint)) {
-      addRequiredRow(targetRow);
+      for (const targetRow of softForbiddenTargetRows(rule.constraint)) {
+        addRequiredRow(targetRow);
+      }
     }
   }
 
@@ -315,12 +324,14 @@ export function getRowEvaluationBlockers(grid: Grid, row: number): RowEvaluation
 
     for (let col = 0; col < grid.cols; col++) {
       const sourceCell = grid.cells[sourceRow][col];
-      if (!sourceCell.accessible || !sourceCell.ruleTile) continue;
+      if (!sourceCell.accessible) continue;
 
-      if (sourceCell.ruleTile.type === 'softMatch' || sourceCell.ruleTile.type === 'forbiddenMatch') {
-        const targets = softForbiddenTargetRows(sourceCell.ruleTile.constraint);
-        if (targets.includes(row)) {
-          addRequiredRow(sourceRow);
+      for (const rule of getCellRuleTiles(sourceCell)) {
+        if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
+          const targets = softForbiddenTargetRows(rule.constraint);
+          if (targets.includes(row)) {
+            addRequiredRow(sourceRow);
+          }
         }
       }
     }
@@ -352,11 +363,7 @@ export function getRowRuleSignalState(grid: Grid, row: number): RowRuleSignalSta
   return isValid ? 'valid' : 'invalid';
 }
 
-function ruleAppliesToRow(grid: Grid, sourceRow: number, col: number, targetRow: number): boolean {
-  const cell = grid.cells[sourceRow][col];
-  const rule = cell.ruleTile;
-  if (!cell.accessible || !rule) return false;
-
+function ruleAppliesToRow(sourceRow: number, targetRow: number, rule: RuleTile): boolean {
   if (rule.type === 'hardMatch') {
     return sourceRow === targetRow || rule.constraint.pairedRow === targetRow;
   }
@@ -364,30 +371,8 @@ function ruleAppliesToRow(grid: Grid, sourceRow: number, col: number, targetRow:
   return sourceRow === targetRow || softForbiddenTargetRows(rule.constraint).includes(targetRow);
 }
 
-export function getBrokenApplicableRuleCells(grid: Grid, row: number): Array<{ row: number; col: number }> {
-  const brokenCells: Array<{ row: number; col: number }> = [];
-
-  for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
-    for (let col = 0; col < grid.cols; col++) {
-      const cell = grid.cells[sourceRow][col];
-      if (!cell.accessible || !cell.ruleTile) continue;
-      if (!ruleAppliesToRow(grid, sourceRow, col, row)) continue;
-      if (computeRuleFulfillment(grid, sourceRow, col) === 'broken') {
-        brokenCells.push({ row: sourceRow, col });
-      }
-    }
-  }
-
-  return brokenCells;
-}
-
-export type RuleFulfillment = 'neutral' | 'fulfilled' | 'broken';
-
-export function computeRuleFulfillment(grid: Grid, row: number, col: number): RuleFulfillment {
+function computeSingleRuleFulfillment(grid: Grid, row: number, col: number, rule: RuleTile): RuleFulfillment {
   const cell = grid.cells[row][col];
-  const rule = cell.ruleTile;
-  if (!rule) return 'neutral';
-
   if (rule.type === 'hardMatch') {
     const { pairedRow, pairedCol } = rule.constraint;
     if (!isRowComplete(grid, row) || !isRowComplete(grid, pairedRow)) return 'neutral';
@@ -421,6 +406,46 @@ export function computeRuleFulfillment(grid: Grid, row: number, col: number): Ru
     if (letterAppearsInRow(tr)) return 'broken';
   }
   return 'fulfilled';
+}
+
+export function getBrokenApplicableRuleCells(grid: Grid, row: number): Array<{ row: number; col: number }> {
+  const brokenCells: Array<{ row: number; col: number }> = [];
+
+  for (let sourceRow = 0; sourceRow < grid.rows; sourceRow++) {
+    for (let col = 0; col < grid.cols; col++) {
+      const cell = grid.cells[sourceRow][col];
+      if (!cell.accessible) continue;
+      const rules = getCellRuleTiles(cell);
+      if (rules.length === 0) continue;
+
+      const hasBrokenApplicableRule = rules.some(rule =>
+        ruleAppliesToRow(sourceRow, row, rule) &&
+        computeSingleRuleFulfillment(grid, sourceRow, col, rule) === 'broken'
+      );
+      if (hasBrokenApplicableRule) {
+        brokenCells.push({ row: sourceRow, col });
+      }
+    }
+  }
+
+  return brokenCells;
+}
+
+export type RuleFulfillment = 'neutral' | 'fulfilled' | 'broken';
+
+export function computeRuleFulfillment(grid: Grid, row: number, col: number): RuleFulfillment {
+  const cell = grid.cells[row][col];
+  const rules = getCellRuleTiles(cell);
+  if (rules.length === 0) return 'neutral';
+
+  let hasFulfilled = false;
+  for (const rule of rules) {
+    const fulfillment = computeSingleRuleFulfillment(grid, row, col, rule);
+    if (fulfillment === 'broken') return 'broken';
+    if (fulfillment === 'fulfilled') hasFulfilled = true;
+  }
+
+  return hasFulfilled ? 'fulfilled' : 'neutral';
 }
 
 export function validateAndUpdateRow(

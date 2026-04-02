@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated, TouchableOpacity } from 'react-native';
-import { Grid as GridType, GameMode, HintLevel, softForbiddenUnidirectionalRotation } from '../engine/types';
+import { Grid as GridType, GameMode, HintLevel, RuleTile, getCellRuleTiles, softForbiddenUnidirectionalRotation } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
 import {
   computeRuleFulfillment,
@@ -226,19 +226,22 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                     ? solvedCell.letter
                     : undefined;
                   const isActive = rowIndex === currentPosition?.row && colIndex === currentPosition?.col;
-                  const fulfillment = cell.ruleTile
-                    ? computeRuleFulfillment(grid, rowIndex, colIndex)
-                    : undefined;
-                  const modifierFulfillment = cell.ruleTile ? fulfillment : undefined;
-                  const modifierRotation: 0 | 180 = (() => {
-                    const rt = cell.ruleTile;
-                    if (rt?.type === 'hardMatch' && rt.constraint.position === 'bottom') return 180;
-                    if (rt?.type === 'softMatch' || rt?.type === 'forbiddenMatch') {
-                      const r = softForbiddenUnidirectionalRotation(rt);
-                      if (r !== undefined) return r;
-                    }
-                    return 0;
-                  })();
+                  const fulfillment = computeRuleFulfillment(grid, rowIndex, colIndex);
+                  const modifiers = getCellRuleTiles(cell).slice(0, 2).map(rule => {
+                    const rotation: 0 | 180 = (() => {
+                      if (rule.type === 'hardMatch' && rule.constraint.position === 'bottom') return 180;
+                      if (rule.type === 'softMatch' || rule.type === 'forbiddenMatch') {
+                        const r = softForbiddenUnidirectionalRotation(rule);
+                        if (r !== undefined) return r;
+                      }
+                      return 0;
+                    })();
+                    return {
+                      rule: rule as RuleTile,
+                      fulfillment,
+                      rotation,
+                    };
+                  });
 
                   return (
                     <CellView
@@ -248,8 +251,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                       tileSize={tileSize}
                       ghostLetter={ghostLetter}
                       active={isActive}
-                      modifierFulfillment={modifierFulfillment}
-                      modifierRotation={modifierRotation}
+                      modifiers={modifiers}
                       blinkRuleStroke={blinkVisible && blinkTargets.has(`${rowIndex}-${colIndex}`)}
                     />
                   );

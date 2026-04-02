@@ -73,7 +73,9 @@ export interface Cell {
   state: CellState;
   accessible: boolean;
   validation: ValidationState;
+  /** @deprecated use ruleTiles */
   ruleTile?: RuleTile;
+  ruleTiles?: RuleTile[];
   fixed?: boolean;
 }
 
@@ -96,8 +98,37 @@ export interface Grid {
   cells: Cell[][];
 }
 
-function cloneRuleTile(tile: RuleTile): RuleTile {
+export function cloneRuleTile(tile: RuleTile): RuleTile {
   return { ...tile, constraint: { ...tile.constraint } } as RuleTile;
+}
+
+export function getCellRuleTiles(cell: Cell): RuleTile[] {
+  if (cell.ruleTiles) return cell.ruleTiles;
+  if (cell.ruleTile) return [cell.ruleTile];
+  return [];
+}
+
+export function getPrimaryRuleTile(cell: Cell): RuleTile | undefined {
+  return cell.ruleTiles?.[0];
+}
+
+export function setCellRuleTiles(cell: Cell, tiles: RuleTile[] | undefined): void {
+  if (!tiles || tiles.length === 0) {
+    delete cell.ruleTile;
+    delete cell.ruleTiles;
+    return;
+  }
+  cell.ruleTile = cloneRuleTile(tiles[0]);
+  cell.ruleTiles = tiles.map(cloneRuleTile);
+}
+
+export function addCellRuleTile(cell: Cell, tile: RuleTile): void {
+  const current = getCellRuleTiles(cell);
+  setCellRuleTiles(cell, [...current, tile]);
+}
+
+export function hasRuleType(cell: Cell, type: RuleTile['type']): boolean {
+  return getCellRuleTiles(cell).some(tile => tile.type === type);
 }
 
 export function cloneGrid(grid: Grid): Grid {
@@ -107,6 +138,7 @@ export function cloneGrid(grid: Grid): Grid {
       row.map(cell => ({
         ...cell,
         ruleTile: cell.ruleTile ? cloneRuleTile(cell.ruleTile) : undefined,
+        ruleTiles: cell.ruleTiles ? cell.ruleTiles.map(cloneRuleTile) : undefined,
       }))
     ),
   };

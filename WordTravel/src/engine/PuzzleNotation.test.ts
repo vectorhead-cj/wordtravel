@@ -118,6 +118,23 @@ describe('PuzzleNotation', () => {
       expect(serializeGrid(parseGrid(input))).toBe(input);
     });
 
+    it('should parse hard+soft combined modifier as two rules', () => {
+      const combined = ('.' + '\u0302' + '\u0303' + '\u030b').normalize('NFC');
+      const grid = parseGrid(`...\n${combined}..\n...`);
+      const rules = grid.cells[1][0].ruleTiles ?? [];
+      expect(rules.length).toBe(2);
+      expect(rules.some(r => r.type === 'hardMatch')).toBe(true);
+      expect(rules.some(r => r.type === 'softMatch')).toBe(true);
+    });
+
+    it('should parse duplicate forbidden rules as two rules', () => {
+      const combined = ('.' + '\u0308' + '\u0312' + '\u0308' + '\u0312').normalize('NFC');
+      const grid = parseGrid(`...\n${combined}..\n...`);
+      const rules = grid.cells[1][0].ruleTiles ?? [];
+      expect(rules.length).toBe(2);
+      expect(rules.every(r => r.type === 'forbiddenMatch')).toBe(true);
+    });
+
     it('should parse letter + circumflex as fixed letter with hard match', () => {
       const grid = parseGrid('\u00C2\n.');  // Â
       const cell = grid.cells[0][0];
@@ -237,6 +254,12 @@ describe('PuzzleNotation', () => {
 
     it('should round-trip letter+rule combos with uniform width', () => {
       const input = '\u00C2\u00C3\u00DC\n...';  // ÂÃÜ — both lines are 3 chars
+      expect(serializeGrid(parseGrid(input))).toBe(input);
+    });
+
+    it('should round-trip combined hard+soft modifier', () => {
+      const combo = ('A' + '\u0302' + '\u0303' + '\u030b').normalize('NFC');
+      const input = `${combo}..\n...`;
       expect(serializeGrid(parseGrid(input))).toBe(input);
     });
 
