@@ -78,20 +78,11 @@ export function validateSoftMatchTiles(grid: Grid, row: number): boolean {
         }
 
         const softTargets = softForbiddenTargetRows(rule.constraint);
-        const multiTargetSoft = softTargets.length > 1;
-        if (
-          sourceRow === row &&
-          multiTargetSoft &&
-          !softTargets.every(t => isRowComplete(grid, t))
-        ) {
-          return false;
-        }
 
         for (const targetRow of softTargets) {
           const validatingTargetRow = targetRow === row;
           const validatingSourceRowWithKnownTarget =
-            sourceRow === row &&
-            (multiTargetSoft || isRowComplete(grid, targetRow));
+            sourceRow === row && isRowComplete(grid, targetRow);
 
           if (!validatingTargetRow && !validatingSourceRowWithKnownTarget) continue;
 

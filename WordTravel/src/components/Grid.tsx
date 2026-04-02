@@ -386,7 +386,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         </Animated.View>
       )}
 
-      <ErrorToast message={signalMessage ?? errorMessage} />
+      <ErrorToast message={signalMessage} />
 
       {!readOnly && (
         <TextInput

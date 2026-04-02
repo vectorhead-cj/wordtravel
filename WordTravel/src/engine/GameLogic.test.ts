@@ -1090,17 +1090,19 @@ describe('GameLogic Validation', () => {
       expect(validateForbiddenMatchTiles(grid, 1)).toBe(false);
     });
 
-    it('validateSoftMatchTiles fails bidirectional source row until both adjacent rows are complete', () => {
+    it('validateSoftMatchTiles defers bidirectional source row check for incomplete targets', () => {
       const softBoth: SoftMatchTile = {
         type: 'softMatch',
         constraint: { prevRow: 0, nextRow: 2 },
       };
+      // Row 0 is complete and contains 'A', row 2 is incomplete — should pass
+      // because the incomplete target is deferred, not treated as a failure
       const grid = createTestGrid([
         [createTestCell('A', true), createTestCell('B', true)],
         [createTestCell('A', true, softBoth), createTestCell('X', true)],
         [createTestCell(null, true), createTestCell(null, true)],
       ]);
-      expect(validateSoftMatchTiles(grid, 1)).toBe(false);
+      expect(validateSoftMatchTiles(grid, 1)).toBe(true);
     });
 
     it('validateSoftMatchTiles still defers unidirectional nextRow when only the row below is incomplete', () => {
