@@ -604,7 +604,8 @@ describe('fixed tile constraints', () => {
   });
 
   it('fixed letter alphabet uses only common letters', () => {
-    const allowed = new Set(PUZZLE_CONFIG.FIXED_LETTER_ALPHABET.split(''));
+    const excluded = new Set(PUZZLE_CONFIG.FIXED_LETTER_ALPHABET_EXCLUDE.split(''));
+    const allowed = new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(ch => !excluded.has(ch)));
     for (let i = 0; i < FUZZ_ITERATIONS; i++) {
       const grid = generateGridFast('open');
       for (const row of findWordRows(grid)) {

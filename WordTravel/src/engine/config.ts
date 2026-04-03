@@ -65,7 +65,7 @@ export const PUZZLE_CONFIG = {
   WORD_LENGTH_WEIGHTS: { 3: 40, 4: 40, 5: 20 } as Record<number, number>,
   GRID_COLS: 5,
   CENTER_COL: 2,
-  FIXED_LETTER_ALPHABET: 'ABCDEFGHIKLMNOPRSTUWY',
+  FIXED_LETTER_ALPHABET_EXCLUDE: 'JQVXZ',
   // Words with frequency below this threshold are excluded from puzzle generation and hint counting.
   // Raise to restrict to more common words; lower to broaden the generator vocabulary.
   GENERATOR_MIN_WORD_FREQUENCY: 5e-6,

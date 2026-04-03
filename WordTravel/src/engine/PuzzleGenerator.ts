@@ -270,7 +270,8 @@ export class PuzzleGenerator {
 
     this.shuffle(candidates);
 
-    const alphabet = PUZZLE_CONFIG.FIXED_LETTER_ALPHABET;
+    const excluded = new Set(PUZZLE_CONFIG.FIXED_LETTER_ALPHABET_EXCLUDE.split(''));
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(ch => !excluded.has(ch));
     const usedRows = new Set<number>();
     let placed = 0;
 
