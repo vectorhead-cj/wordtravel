@@ -26,22 +26,4 @@ The game has two modes: **Puzzle** (timed, scored) and **Action** (sequential ro
 
 The grid has a fixed number of columns (currently 5) and multiple word rows. Words can be 3–5 letters, center-aligned within the columns. Not every cell in a row is always part of a word. Some cells may be pre-filled (locked/fixed) as part of the puzzle.
 
-## Rule tiles
-
-Rule tiles are the core mechanic. A cell can carry up to two rule tiles. Each tile constrains the relationship between the letter in that cell and the word in an adjacent row:
-
-- **Hard match** — the letter in this cell must be identical to the letter at the same column position in the paired row.
-- **Soft match** — the letter in this cell must appear *somewhere* in the target row's word.
-- **Forbidden match** — the letter in this cell must *not* appear anywhere in the target row's word.
-
-Soft and forbidden tiles can point to the row above, below, or both (bidirectional). Hard match tiles always pair a specific cell in one row with a specific cell in another.
-
-## Puzzle generation & difficulty
-
-Puzzles are generated from profiles that specify how many of each rule tile type to place and how many letters to pre-fill. Difficulty (easy/medium/hard) is validated by running Monte Carlo simulations: a puzzle is rated by what fraction of random auto-solve attempts succeed. If the success rate falls below the hard threshold, the puzzle is rejected and regenerated.
-
-## Puzzle types
-
-- **Open** — all word rows are blank; player fills everything.
-- **Bridge** — start and end rows are pre-specified; the player bridges between these.
-- **Semi** — only one word is pre-specified.
+Rule tiles and rules for generating a puzzle are found in `game_rules.md`.

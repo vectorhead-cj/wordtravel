@@ -5,9 +5,6 @@ import {
   WordSlot,
   PuzzleType,
   Difficulty,
-  HardMatchTile,
-  SoftMatchTile,
-  ForbiddenMatchTile,
   RuleTile,
   SoftForbiddenConstraint,
   addCellRuleTile,
@@ -15,11 +12,16 @@ import {
   setCellRuleTiles,
   softForbiddenTargetRows,
   lastWordSlotRow,
+  cloneGrid,
 } from './types';
 import { PUZZLE_CONFIG, GENERATION_PROFILES, GenerationProfile } from './config';
 import { generatorDictionary, ConstraintQuery } from './Dictionary';
 import { serializeGrid } from './PuzzleNotation';
-import { simulatePuzzleDifficulty } from './DifficultySimulator';
+import { simulatePuzzleDifficulty, classifyDifficulty } from './DifficultySimulator';
+
+const DIFFICULTY_ORDER: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+const MAX_TUNE_ROUNDS = 8;
+const MODIFIERS_PER_ROUND = 2;
 
 export interface GeneratedPuzzle {
   puzzle: string;
@@ -30,22 +32,12 @@ export interface GeneratedPuzzle {
 export class PuzzleGenerator {
   generatePuzzle(puzzleType: PuzzleType = 'open', targetDifficulty?: Difficulty): GeneratedPuzzle {
     const maxAttempts = 500;
+    const difficulty = targetDifficulty ?? 'medium';
+    const profile = GENERATION_PROFILES[difficulty];
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const difficulty = targetDifficulty ?? 'medium';
-      const profile = GENERATION_PROFILES[difficulty];
-
-      const grid = this.generateStaged(puzzleType, difficulty, profile);
-      if (!grid) continue;
-
-      const sim = simulatePuzzleDifficulty(grid);
-      if (sim.difficulty === null) continue;
-      if (targetDifficulty !== undefined && sim.difficulty !== targetDifficulty) continue;
-
-      return {
-        puzzle: serializeGrid(grid),
-        difficulty: sim.difficulty,
-        successRate: sim.successRate,
-      };
+      const result = this.generateAndTune(puzzleType, profile, difficulty);
+      if (result) return result;
     }
     throw new Error(`Failed to generate puzzle after ${maxAttempts} attempts`);
   }
@@ -54,15 +46,72 @@ export class PuzzleGenerator {
   generateGrid(puzzleType: PuzzleType = 'open', difficulty: Difficulty = 'medium', maxAttempts = 200): Grid {
     const profile = GENERATION_PROFILES[difficulty];
     for (let i = 0; i < maxAttempts; i++) {
-      const grid = this.generateStaged(puzzleType, difficulty, profile);
+      const grid = this.generateStaged(puzzleType, profile);
       if (grid) return grid;
     }
     throw new Error(`Failed to generate valid grid in ${maxAttempts} attempts`);
   }
 
+  /**
+   * Generate a base grid, then iteratively add modifiers until the target
+   * difficulty is reached. Returns null if the grid is unsalvageable (too hard
+   * or can't accept more modifiers).
+   */
+  private generateAndTune(
+    puzzleType: PuzzleType,
+    profile: GenerationProfile,
+    targetDifficulty: Difficulty,
+  ): GeneratedPuzzle | null {
+    const baseGrid = this.generateStaged(puzzleType, profile);
+    if (!baseGrid) return null;
+
+    // We need config to add modifiers — regenerate it from the grid
+    const config = this.configFromGrid(baseGrid);
+
+    let grid = baseGrid;
+
+    for (let round = 0; round <= MAX_TUNE_ROUNDS; round++) {
+      const sim = simulatePuzzleDifficulty(grid);
+      if (sim.difficulty === null) return null; // unsolvable
+
+      if (sim.difficulty === targetDifficulty) {
+        return {
+          puzzle: serializeGrid(grid),
+          difficulty: sim.difficulty,
+          successRate: sim.successRate,
+        };
+      }
+
+      // Current difficulty is harder than target — can't make it easier, restart
+      if (DIFFICULTY_ORDER[sim.difficulty] > DIFFICULTY_ORDER[targetDifficulty]) {
+        return null;
+      }
+
+      // Too easy — try adding modifiers to increase difficulty
+      if (round === MAX_TUNE_ROUNDS) return null; // exhausted tuning budget
+
+      const snapshot = cloneGrid(grid);
+      let added = 0;
+      for (let i = 0; i < MODIFIERS_PER_ROUND; i++) {
+        if (this.tryAddRandomModifier(grid, config, profile)) {
+          added++;
+        }
+      }
+
+      if (added === 0) return null; // no room for more modifiers
+
+      // Validate the modified grid; roll back if invalid
+      if (!this.fullValidation(grid, config, profile)) {
+        grid = snapshot;
+        return null;
+      }
+    }
+
+    return null;
+  }
+
   private generateStaged(
     puzzleType: PuzzleType,
-    difficulty: Difficulty,
     profile: GenerationProfile,
   ): Grid | null {
     // Stage 1: generate config with word length sequence validation
@@ -80,7 +129,7 @@ export class PuzzleGenerator {
     let hardOk = false;
     for (let i = 0; i < 5 && !hardOk; i++) {
       this.clearTilesByType(grid, 'hardMatch');
-      this.placeHardMatchChains(grid, config, profile, difficulty);
+      this.placeHardMatchChains(grid, config, profile);
       hardOk = this.validateAfterHardMatch(grid, config, profile);
     }
     if (!hardOk) return null;
@@ -90,15 +139,16 @@ export class PuzzleGenerator {
     for (let i = 0; i < 5 && !softOk; i++) {
       this.clearTilesByType(grid, 'softMatch');
       this.clearTilesByType(grid, 'forbiddenMatch');
-      this.placeSoftForbiddenTiles(grid, config, profile, difficulty, 'softMatch', profile.softMatchTiles);
-      this.placeSoftForbiddenTiles(grid, config, profile, difficulty, 'forbiddenMatch', profile.forbiddenTiles);
+      this.placeSoftForbiddenTiles(grid, config, profile, 'softMatch', profile.minSoftMatchModifiers);
+      this.placeSoftForbiddenTiles(grid, config, profile, 'forbiddenMatch', profile.minForbiddenModifiers);
       softOk = this.validateRuleConflicts(grid) &&
-               this.validateDictionaryFeasibility(grid, config, profile.minCandidatesPerRow);
+               this.validateDictionaryFeasibility(grid, config, profile.minCandidatesPerRow) &&
+               this.validateForbiddenGrouping(grid, config, profile.minForbiddenGroupSize);
     }
     if (!softOk) return null;
 
     // Stage 6: ensure minimums
-    this.ensureMinimumRuleTiles(grid, config, profile, difficulty);
+    this.ensureMinimumRuleTiles(grid, config, profile);
 
     // Stage 7: full validation
     if (!this.fullValidation(grid, config, profile)) return null;
@@ -246,9 +296,8 @@ export class PuzzleGenerator {
     grid: Grid,
     config: PuzzleConfig,
     profile: GenerationProfile,
-    difficulty: Difficulty,
   ): void {
-    let remainingConnections = profile.hardMatchPairs;
+    let remainingConnections = profile.minHardMatchPairs;
     const maxAttempts = 100;
     let attempts = 0;
 
@@ -260,7 +309,7 @@ export class PuzzleGenerator {
       // Try desired length, then fall back to shorter chains
       let placed = false;
       for (let chainLen = desiredLength; chainLen >= 2 && !placed; chainLen--) {
-        placed = this.tryPlaceChain(grid, config, difficulty, chainLen);
+        placed = this.tryPlaceChain(grid, config, profile, chainLen);
         if (placed) {
           remainingConnections -= (chainLen - 1);
         }
@@ -271,7 +320,7 @@ export class PuzzleGenerator {
   private tryPlaceChain(
     grid: Grid,
     config: PuzzleConfig,
-    difficulty: Difficulty,
+    profile: GenerationProfile,
     chainLength: number,
   ): boolean {
     const maxStartRow = config.rows - chainLength;
@@ -295,10 +344,10 @@ export class PuzzleGenerator {
       const needsBottom = !isLast;
 
       if (isFirst || isLast) {
-        if (!this.canAddRuleWithHalves(cell, difficulty, needsTop, needsBottom)) return false;
+        if (!this.canAddRuleWithHalves(cell, profile, needsTop, needsBottom)) return false;
       } else {
         // Middle cell needs 2 rule slots + both halves free
-        if (getCellRuleTiles(cell).length + 2 > this.maxRulesPerCell(difficulty)) return false;
+        if (getCellRuleTiles(cell).length + 2 > this.maxRulesPerCell(profile)) return false;
         const halves = this.occupiedHalves(cell);
         if (halves.top || halves.bottom) return false;
       }
@@ -335,11 +384,11 @@ export class PuzzleGenerator {
   private placeSoftForbiddenTiles(
     grid: Grid,
     config: PuzzleConfig,
-    _profile: GenerationProfile,
-    difficulty: Difficulty,
+    profile: GenerationProfile,
     tileType: 'softMatch' | 'forbiddenMatch',
     targetCount: number,
   ): void {
+    const bidirectional = profile.permittedSoftAndForbiddenDirections === 'bidirectional';
     let placed = 0;
     const maxAttempts = 100;
     let attempts = 0;
@@ -353,13 +402,20 @@ export class PuzzleGenerator {
       const cell = grid.cells[randomRow][randomCol];
       if (!cell.accessible) continue;
 
+      // Skip cells in fully-fixed rows unless the profile allows it
+      if (!profile.fixedWordRowsMayHaveNonHardModifiers && this.isFullyFixedRow(grid, randomRow)) continue;
+
+      // Forbidden tiles must not be the sole modifier type on a row (grouping rule).
+      // Only place forbidden on rows that already have a non-forbidden modifier.
+      if (tileType === 'forbiddenMatch' && !this.rowHasNonForbiddenModifier(grid, randomRow)) continue;
+
       const { canPointDown, hasPrevRow } = this.getRowDirectionality(grid, config, randomRow);
 
       let constraint: SoftForbiddenConstraint;
       let needsTop: boolean;
       let needsBottom: boolean;
 
-      if (difficulty !== 'hard') {
+      if (!bidirectional) {
         if (!canPointDown) continue;
         constraint = { nextRow: randomRow + 1 };
         needsTop = false;
@@ -371,7 +427,7 @@ export class PuzzleGenerator {
         needsBottom = true;
       }
 
-      if (!this.canAddRuleWithHalves(cell, difficulty, needsTop, needsBottom)) continue;
+      if (!this.canAddRuleWithHalves(cell, profile, needsTop, needsBottom)) continue;
 
       // Trivial-constraint check only for soft match
       if (tileType === 'softMatch' && cell.fixed && cell.letter) {
@@ -409,64 +465,199 @@ export class PuzzleGenerator {
     grid: Grid,
     config: PuzzleConfig,
     profile: GenerationProfile,
-    difficulty: Difficulty,
   ): void {
-    const min = profile.minRuleTilesPerWord;
+    const min = profile.minModifiersPerRow;
     if (min <= 0) return;
 
-    const lastWordRow = lastWordSlotRow(config);
+    const bidirectional = profile.permittedSoftAndForbiddenDirections === 'bidirectional';
 
     for (const slot of config.wordSlots) {
+      const isFixed = this.isFullyFixedRow(grid, slot.row);
+      if (isFixed && !profile.fixedWordRowsMayHaveNonHardModifiers) continue;
+
       let deficit = min - this.countRuleTilesInRow(grid, slot.row);
 
       for (let col = slot.startCol; col <= slot.endCol && deficit > 0; col++) {
         const cell = grid.cells[slot.row][col];
         if (!cell.accessible) continue;
 
-        // Try hard-match pair with the row below
-        // Top cell needs bottom half free; bottom cell needs top half free
-        if (slot.row + 1 < grid.rows) {
-          const below = grid.cells[slot.row + 1][col];
-          if (below.accessible && !cell.fixed && !below.fixed &&
-              this.canAddRuleWithHalves(cell, difficulty, false, true) &&
-              this.canAddRuleWithHalves(below, difficulty, true, false)) {
-            addCellRuleTile(cell, {
-              type: 'hardMatch',
-              constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
-            });
-            addCellRuleTile(below, {
-              type: 'hardMatch',
-              constraint: { pairedRow: slot.row, pairedCol: col, position: 'bottom' },
-            });
-            deficit--;
-            continue;
+        // Build weighted list of types to try
+        const candidates: Array<'hardMatch' | 'softMatch' | 'forbiddenMatch'> = [];
+        if (!cell.fixed) {
+          for (let i = 0; i < profile.minHardMatchPairs; i++) candidates.push('hardMatch');
+        }
+        for (let i = 0; i < profile.minSoftMatchModifiers; i++) candidates.push('softMatch');
+        for (let i = 0; i < profile.minForbiddenModifiers; i++) candidates.push('forbiddenMatch');
+
+        this.shuffle(candidates);
+
+        const tried = new Set<string>();
+        let placed = false;
+        for (const type of candidates) {
+          if (tried.has(type)) continue;
+          tried.add(type);
+
+          if (type === 'hardMatch') {
+            placed = this.tryPlaceHardMatchBackfill(grid, slot, col, profile);
+          } else {
+            placed = this.tryPlaceSoftOrForbiddenBackfill(grid, config, slot, col, profile, type, bidirectional);
           }
+          if (placed) break;
         }
 
-        // Try soft-match with the next row (never on the bottom word row)
-        const { canPointDown, hasPrevRow } = this.getRowDirectionality(grid, config, slot.row);
-        if (canPointDown) {
-          const bidirectional = difficulty === 'hard' && hasPrevRow;
-          const needsTop = bidirectional;
-          const needsBottom = true;
-          if (!this.canAddRuleWithHalves(cell, difficulty, needsTop, needsBottom)) continue;
-
-          const trivial = cell.fixed && cell.letter &&
-            grid.cells[slot.row + 1].some(
-              tc => tc.accessible && tc.fixed && tc.letter === cell.letter,
-            );
-          if (trivial) continue;
-
-          addCellRuleTile(cell, {
-            type: 'softMatch',
-            constraint: bidirectional
-              ? { nextRow: slot.row + 1, prevRow: slot.row - 1 }
-              : { nextRow: slot.row + 1 },
-          });
-          deficit--;
-        }
+        if (placed) deficit--;
       }
     }
+
+    // Second pass: ensure every adjacent-row boundary has a constraint crossing it
+    this.ensureBoundaryCoverage(grid, config, profile, bidirectional);
+  }
+
+  /**
+   * For each uncovered adjacent-row boundary, try to place a modifier that
+   * crosses it. Tries from the upper row pointing down first, then from the
+   * lower row (hard match up, or bidirectional soft/forbidden).
+   */
+  private ensureBoundaryCoverage(
+    grid: Grid,
+    config: PuzzleConfig,
+    profile: GenerationProfile,
+    bidirectional: boolean,
+  ): void {
+    for (let i = 1; i < config.wordSlots.length; i++) {
+      const slotA = config.wordSlots[i - 1];
+      const slotB = config.wordSlots[i];
+
+      // Skip boundaries adjacent to fully-fixed rows when not allowed
+      if (!profile.fixedWordRowsMayHaveNonHardModifiers) {
+        if (this.isFullyFixedRow(grid, slotA.row) || this.isFullyFixedRow(grid, slotB.row)) continue;
+      }
+
+      if (this.boundaryHasConstraint(grid, slotA.row, slotB.row)) continue;
+
+      // Try placing a downward modifier on row A
+      if (this.tryPlaceBoundaryCrossing(grid, config, slotA, slotB, profile, bidirectional)) continue;
+
+      // Try placing an upward hard match on row B → row A
+      this.tryPlaceUpwardHardMatchBackfill(grid, slotB, slotA, profile);
+    }
+  }
+
+  /** Try to place any modifier on slotA that targets slotB's row. */
+  private tryPlaceBoundaryCrossing(
+    grid: Grid, config: PuzzleConfig,
+    slotA: WordSlot, slotB: WordSlot,
+    profile: GenerationProfile, bidirectional: boolean,
+  ): boolean {
+    const isFixedA = this.isFullyFixedRow(grid, slotA.row);
+    if (isFixedA && !profile.fixedWordRowsMayHaveNonHardModifiers) return false;
+
+    const cols = this.shuffledRange(slotA.startCol, slotA.endCol);
+    for (const col of cols) {
+      const cell = grid.cells[slotA.row][col];
+      if (!cell.accessible) continue;
+
+      // Try hard match (downward from A to B) — must not be on fixed cells
+      if (!cell.fixed && grid.cells[slotB.row][col]?.accessible && !grid.cells[slotB.row][col].fixed) {
+        if (this.tryPlaceHardMatchBackfill(grid, slotA, col, profile)) return true;
+      }
+
+      // Try soft or forbidden pointing down
+      const types: Array<'softMatch' | 'forbiddenMatch'> = Math.random() < 0.5
+        ? ['softMatch', 'forbiddenMatch']
+        : ['forbiddenMatch', 'softMatch'];
+      for (const tileType of types) {
+        if (this.tryPlaceSoftOrForbiddenBackfill(grid, config, slotA, col, profile, tileType, bidirectional)) return true;
+      }
+    }
+    return false;
+  }
+
+  /** Try to place a hard match on slotB pointing up to slotA. */
+  private tryPlaceUpwardHardMatchBackfill(
+    grid: Grid, slotB: WordSlot, slotA: WordSlot,
+    profile: GenerationProfile,
+  ): boolean {
+    const cols = this.shuffledRange(slotB.startCol, slotB.endCol);
+    for (const col of cols) {
+      const cellB = grid.cells[slotB.row][col];
+      const cellA = grid.cells[slotA.row]?.[col];
+      if (!cellB.accessible || cellB.fixed || !cellA?.accessible || cellA.fixed) continue;
+      if (!this.canAddRuleWithHalves(cellB, profile, true, false)) continue;
+      if (!this.canAddRuleWithHalves(cellA, profile, false, true)) continue;
+
+      addCellRuleTile(cellB, {
+        type: 'hardMatch',
+        constraint: { pairedRow: slotA.row, pairedCol: col, position: 'bottom' },
+      });
+      addCellRuleTile(cellA, {
+        type: 'hardMatch',
+        constraint: { pairedRow: slotB.row, pairedCol: col, position: 'top' },
+      });
+      return true;
+    }
+    return false;
+  }
+
+  private shuffledRange(start: number, end: number): number[] {
+    const arr: number[] = [];
+    for (let i = start; i <= end; i++) arr.push(i);
+    this.shuffle(arr);
+    return arr;
+  }
+
+  private tryPlaceHardMatchBackfill(
+    grid: Grid, slot: WordSlot, col: number, profile: GenerationProfile,
+  ): boolean {
+    if (slot.row + 1 >= grid.rows) return false;
+    const cell = grid.cells[slot.row][col];
+    const below = grid.cells[slot.row + 1][col];
+    if (!below.accessible || cell.fixed || below.fixed) return false;
+    if (!this.canAddRuleWithHalves(cell, profile, false, true)) return false;
+    if (!this.canAddRuleWithHalves(below, profile, true, false)) return false;
+
+    addCellRuleTile(cell, {
+      type: 'hardMatch',
+      constraint: { pairedRow: slot.row + 1, pairedCol: col, position: 'top' },
+    });
+    addCellRuleTile(below, {
+      type: 'hardMatch',
+      constraint: { pairedRow: slot.row, pairedCol: col, position: 'bottom' },
+    });
+    return true;
+  }
+
+  private tryPlaceSoftOrForbiddenBackfill(
+    grid: Grid, config: PuzzleConfig, slot: WordSlot, col: number,
+    profile: GenerationProfile, tileType: 'softMatch' | 'forbiddenMatch',
+    bidirectional: boolean,
+  ): boolean {
+    // Forbidden must not be the sole modifier type on a row
+    if (tileType === 'forbiddenMatch' && !this.rowHasNonForbiddenModifier(grid, slot.row)) return false;
+
+    const cell = grid.cells[slot.row][col];
+    const { canPointDown, hasPrevRow } = this.getRowDirectionality(grid, config, slot.row);
+    if (!canPointDown) return false;
+
+    const useBidirectional = bidirectional && hasPrevRow;
+    const needsTop = useBidirectional;
+    const needsBottom = true;
+    if (!this.canAddRuleWithHalves(cell, profile, needsTop, needsBottom)) return false;
+
+    if (tileType === 'softMatch' && cell.fixed && cell.letter) {
+      const constraint = useBidirectional
+        ? { nextRow: slot.row + 1, prevRow: slot.row - 1 }
+        : { nextRow: slot.row + 1 };
+      if (this.isTrivialSoftConstraint(grid, cell.letter, constraint)) return false;
+    }
+
+    addCellRuleTile(cell, {
+      type: tileType,
+      constraint: useBidirectional
+        ? { nextRow: slot.row + 1, prevRow: slot.row - 1 }
+        : { nextRow: slot.row + 1 },
+    });
+    return true;
   }
 
   private countRuleTilesInRow(grid: Grid, row: number): number {
@@ -475,7 +666,7 @@ export class PuzzleGenerator {
       const cell = grid.cells[row][col];
       if (!cell.accessible) continue;
       const rules = getCellRuleTiles(cell);
-      if (rules.some(r => r.type === 'hardMatch' && r.constraint.position === 'top')) {
+      if (rules.some(r => r.type === 'hardMatch')) {
         count++;
         continue;
       }
@@ -487,13 +678,161 @@ export class PuzzleGenerator {
   }
 
   // ---------------------------------------------------------------------------
+  // Difficulty tuning: add modifiers one at a time
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Try to place one random soft or forbidden modifier on an eligible cell.
+   * Returns true if a modifier was placed and feasibility still holds.
+   */
+  private tryAddRandomModifier(
+    grid: Grid,
+    config: PuzzleConfig,
+    profile: GenerationProfile,
+  ): boolean {
+    const bidirectional = profile.permittedSoftAndForbiddenDirections === 'bidirectional';
+    const tileType: 'softMatch' | 'forbiddenMatch' = Math.random() < 0.6 ? 'softMatch' : 'forbiddenMatch';
+
+    const maxAttempts = 50;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const randomRow = Math.floor(Math.random() * config.rows);
+      const randomCol = Math.floor(Math.random() * config.cols);
+      const cell = grid.cells[randomRow][randomCol];
+      if (!cell.accessible) continue;
+
+      // Skip cells in fully-fixed rows unless the profile allows it
+      if (!profile.fixedWordRowsMayHaveNonHardModifiers && this.isFullyFixedRow(grid, randomRow)) continue;
+
+      // Forbidden tiles must not be the sole modifier type on a row
+      if (tileType === 'forbiddenMatch' && !this.rowHasNonForbiddenModifier(grid, randomRow)) continue;
+
+      const { canPointDown, hasPrevRow } = this.getRowDirectionality(grid, config, randomRow);
+
+      let constraint: SoftForbiddenConstraint;
+      let needsTop: boolean;
+      let needsBottom: boolean;
+
+      if (!bidirectional) {
+        if (!canPointDown) continue;
+        constraint = { nextRow: randomRow + 1 };
+        needsTop = false;
+        needsBottom = true;
+      } else {
+        if (!(canPointDown && hasPrevRow)) continue;
+        constraint = { nextRow: randomRow + 1, prevRow: randomRow - 1 };
+        needsTop = true;
+        needsBottom = true;
+      }
+
+      if (!this.canAddRuleWithHalves(cell, profile, needsTop, needsBottom)) continue;
+
+      if (tileType === 'softMatch' && cell.fixed && cell.letter) {
+        if (this.isTrivialSoftConstraint(grid, cell.letter, constraint)) continue;
+      }
+
+      // Tentatively place the modifier
+      const tile: RuleTile = { type: tileType, constraint: { ...constraint } } as RuleTile;
+      addCellRuleTile(cell, tile);
+
+      // Check feasibility still holds; roll back if not
+      if (!this.validateRuleConflicts(grid) ||
+          !this.validateDictionaryFeasibility(grid, config, profile.minCandidatesPerRow)) {
+        const rules = getCellRuleTiles(cell);
+        setCellRuleTiles(cell, rules.filter(r => r !== tile));
+        continue;
+      }
+
+      return true;
+    }
+    return false;
+  }
+
+  /** Reconstruct a PuzzleConfig from an already-built grid. */
+  private configFromGrid(grid: Grid): PuzzleConfig {
+    const wordSlots: WordSlot[] = [];
+    for (let row = 0; row < grid.rows; row++) {
+      let startCol = -1;
+      let endCol = -1;
+      for (let col = 0; col < grid.cols; col++) {
+        if (grid.cells[row][col].accessible) {
+          if (startCol === -1) startCol = col;
+          endCol = col;
+        }
+      }
+      if (startCol !== -1) {
+        wordSlots.push({ row, length: endCol - startCol + 1, startCol, endCol });
+      }
+    }
+    return { wordSlots, rows: grid.rows, cols: grid.cols };
+  }
+
+  // ---------------------------------------------------------------------------
   // Stage 7: Validation
   // ---------------------------------------------------------------------------
 
   private fullValidation(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): boolean {
     return this.validateRuleConflicts(grid) &&
            this.validateDictionaryFeasibility(grid, config, profile.minCandidatesPerRow) &&
-           this.validateForbiddenGrouping(grid, config, profile.minForbiddenGroupSize);
+           this.validateForbiddenGrouping(grid, config, profile.minForbiddenGroupSize) &&
+           this.validateMinModifiersPerRow(grid, config, profile) &&
+           this.validateAdjacentRowConnectivity(grid, config, profile);
+  }
+
+  private validateMinModifiersPerRow(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): boolean {
+    if (profile.minModifiersPerRow <= 0) return true;
+    for (const slot of config.wordSlots) {
+      // Exempt fully-fixed rows only when the profile doesn't allow non-hard modifiers on them
+      if (!profile.fixedWordRowsMayHaveNonHardModifiers && this.isFullyFixedRow(grid, slot.row)) continue;
+      if (this.countRuleTilesInRow(grid, slot.row) < profile.minModifiersPerRow) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Every pair of adjacent word rows must have at least one constraint crossing
+   * the boundary — either row A constraining row B, or row B constraining row A.
+   * Boundaries adjacent to fully-fixed rows are exempt when the profile doesn't
+   * allow non-hard modifiers on them (since hard matches can't be placed on
+   * fixed cells either).
+   */
+  private validateAdjacentRowConnectivity(grid: Grid, config: PuzzleConfig, profile?: GenerationProfile): boolean {
+    for (let i = 1; i < config.wordSlots.length; i++) {
+      const rowA = config.wordSlots[i - 1].row;
+      const rowB = config.wordSlots[i].row;
+
+      // Skip boundaries where one side is a fully-fixed row that can't carry modifiers
+      if (profile && !profile.fixedWordRowsMayHaveNonHardModifiers) {
+        if (this.isFullyFixedRow(grid, rowA) || this.isFullyFixedRow(grid, rowB)) continue;
+      }
+
+      if (!this.boundaryHasConstraint(grid, rowA, rowB)) return false;
+    }
+    return true;
+  }
+
+  /** Check whether any modifier crosses the boundary between rowA and rowB. */
+  private boundaryHasConstraint(grid: Grid, rowA: number, rowB: number): boolean {
+    // Check row A for modifiers targeting row B
+    for (let c = 0; c < grid.cols; c++) {
+      const cell = grid.cells[rowA][c];
+      if (!cell.accessible) continue;
+      for (const rule of getCellRuleTiles(cell)) {
+        if (rule.type === 'hardMatch' && rule.constraint.pairedRow === rowB) return true;
+        if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+            softForbiddenTargetRows(rule.constraint).includes(rowB)) return true;
+      }
+    }
+    // Check row B for modifiers targeting row A
+    for (let c = 0; c < grid.cols; c++) {
+      const cell = grid.cells[rowB][c];
+      if (!cell.accessible) continue;
+      for (const rule of getCellRuleTiles(cell)) {
+        if (rule.type === 'hardMatch' && rule.constraint.pairedRow === rowA) return true;
+        if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+            softForbiddenTargetRows(rule.constraint).includes(rowA)) return true;
+      }
+    }
+    return false;
   }
 
   private validateAfterHardMatch(grid: Grid, config: PuzzleConfig, profile: GenerationProfile): boolean {
@@ -690,6 +1029,23 @@ export class PuzzleGenerator {
   // Shared helpers
   // ---------------------------------------------------------------------------
 
+  private rowHasNonForbiddenModifier(grid: Grid, row: number): boolean {
+    for (let col = 0; col < grid.cols; col++) {
+      const cell = grid.cells[row][col];
+      if (!cell.accessible) continue;
+      for (const rule of getCellRuleTiles(cell)) {
+        if (rule.type === 'hardMatch' || rule.type === 'softMatch') return true;
+      }
+    }
+    return false;
+  }
+
+  private isFullyFixedRow(grid: Grid, row: number): boolean {
+    return grid.cells[row]
+      .filter(c => c.accessible)
+      .every(c => c.fixed);
+  }
+
   private getRowDirectionality(
     grid: Grid,
     config: PuzzleConfig,
@@ -705,8 +1061,8 @@ export class PuzzleGenerator {
     return { canPointDown, hasPrevRow };
   }
 
-  private maxRulesPerCell(difficulty: Difficulty): number {
-    return difficulty === 'hard' ? 2 : 1;
+  private maxRulesPerCell(profile: GenerationProfile): number {
+    return profile.maxRulesPerCell;
   }
 
   /**
@@ -731,8 +1087,8 @@ export class PuzzleGenerator {
     return { top, bottom };
   }
 
-  private canAddRule(cell: Cell, difficulty: Difficulty): boolean {
-    return getCellRuleTiles(cell).length < this.maxRulesPerCell(difficulty);
+  private canAddRule(cell: Cell, profile: GenerationProfile): boolean {
+    return getCellRuleTiles(cell).length < this.maxRulesPerCell(profile);
   }
 
   /** Verify no cell half is used by more than one rule tile. */
@@ -752,8 +1108,8 @@ export class PuzzleGenerator {
   }
 
   /** Check whether a rule tile can be added without a visual half collision. */
-  private canAddRuleWithHalves(cell: Cell, difficulty: Difficulty, needsTop: boolean, needsBottom: boolean): boolean {
-    if (!this.canAddRule(cell, difficulty)) return false;
+  private canAddRuleWithHalves(cell: Cell, profile: GenerationProfile, needsTop: boolean, needsBottom: boolean): boolean {
+    if (!this.canAddRule(cell, profile)) return false;
     const halves = this.occupiedHalves(cell);
     if (needsTop && halves.top) return false;
     if (needsBottom && halves.bottom) return false;

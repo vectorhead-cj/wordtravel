@@ -1,7 +1,7 @@
 import { PuzzleGenerator } from './PuzzleGenerator';
 import { parseGrid, serializeGrid } from './PuzzleNotation';
 import { generatorDictionary } from './Dictionary';
-import { GENERATION_PROFILES } from './config';
+import { GENERATION_PROFILES, PUZZLE_CONFIG } from './config';
 import {
   Grid,
   PuzzleType,
@@ -441,5 +441,310 @@ describe('forbidden grouping', () => {
         }
       }
     }
+  });
+});
+
+// =============================================================================
+// Min modifiers per row
+// =============================================================================
+
+describe('min modifiers per row', () => {
+  it.each(['easy', 'medium', 'hard'] as const)(
+    '%s: every row has at least minModifiersPerRow modifiers',
+    (difficulty) => {
+      const profile = GENERATION_PROFILES[difficulty];
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        const wordRows = findWordRows(grid);
+
+        for (const row of wordRows) {
+          // Fully-fixed rows (fixed words) are exempt
+          if (getAccessibleCells(grid, row).every(c => c.fixed)) continue;
+
+          let count = 0;
+          for (let c = 0; c < grid.cols; c++) {
+            const rules = getCellRuleTiles(grid.cells[row][c]);
+            if (rules.some(r => r.type === 'hardMatch')) {
+              count++;
+              continue;
+            }
+            if (rules.some(r => r.type === 'softMatch' || r.type === 'forbiddenMatch')) {
+              count++;
+            }
+          }
+          expect(count).toBeGreaterThanOrEqual(profile.minModifiersPerRow);
+        }
+      }
+    },
+  );
+});
+
+// =============================================================================
+// Word length constraints
+// =============================================================================
+
+describe('word lengths', () => {
+  it('all word lengths are 3, 4, or 5', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      for (const row of findWordRows(grid)) {
+        const length = getAccessibleCells(grid, row).length;
+        expect([3, 4, 5]).toContain(length);
+      }
+    }
+  });
+});
+
+// =============================================================================
+// Adjacent word column overlap
+// =============================================================================
+
+describe('adjacent word column overlap', () => {
+  it('every pair of adjacent word rows shares at least one column', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      const wordRows = findWordRows(grid);
+
+      for (let j = 1; j < wordRows.length; j++) {
+        const prevCols = new Set<number>();
+        for (let c = 0; c < grid.cols; c++) {
+          if (grid.cells[wordRows[j - 1]][c].accessible) prevCols.add(c);
+        }
+        let overlap = false;
+        for (let c = 0; c < grid.cols; c++) {
+          if (grid.cells[wordRows[j]][c].accessible && prevCols.has(c)) {
+            overlap = true;
+            break;
+          }
+        }
+        expect(overlap).toBe(true);
+      }
+    }
+  });
+});
+
+// =============================================================================
+// First/last row direction constraints
+// =============================================================================
+
+describe('first/last row direction constraints', () => {
+  it('first word row never has upward-facing modifiers', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      const firstRow = findWordRows(grid)[0];
+
+      for (let c = 0; c < grid.cols; c++) {
+        for (const rule of getCellRuleTiles(grid.cells[firstRow][c])) {
+          if (rule.type === 'hardMatch') {
+            // bottom position = pointing up
+            expect(rule.constraint.position).not.toBe('bottom');
+          } else {
+            expect(rule.constraint.prevRow).toBeUndefined();
+          }
+        }
+      }
+    }
+  });
+});
+
+// =============================================================================
+// Fixed tile constraints
+// =============================================================================
+
+describe('fixed tile constraints', () => {
+  it.each(['easy', 'medium', 'hard'] as const)(
+    '%s: fixed tile count (excluding fixed words) does not exceed profile.fixedTiles',
+    (difficulty) => {
+      const profile = GENERATION_PROFILES[difficulty];
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        const wordRows = findWordRows(grid);
+
+        // In open mode, no fully-fixed word rows, so all fixed cells are fixed tiles
+        let fixedCount = 0;
+        for (const row of wordRows) {
+          for (let c = 0; c < grid.cols; c++) {
+            const cell = grid.cells[row][c];
+            if (cell.accessible && cell.fixed) fixedCount++;
+          }
+        }
+        expect(fixedCount).toBeLessThanOrEqual(profile.fixedTiles);
+      }
+    },
+  );
+
+  it('at most one fixed letter tile per row (open mode)', () => {
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      for (const row of findWordRows(grid)) {
+        let fixedInRow = 0;
+        for (let c = 0; c < grid.cols; c++) {
+          if (grid.cells[row][c].accessible && grid.cells[row][c].fixed) fixedInRow++;
+        }
+        expect(fixedInRow).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('no fixed tile has a hard-match modifier', () => {
+    for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            const cell = grid.cells[r][c];
+            if (!cell.fixed) continue;
+            for (const rule of getCellRuleTiles(cell)) {
+              expect(rule.type).not.toBe('hardMatch');
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('fixed letter alphabet uses only common letters', () => {
+    const allowed = new Set(PUZZLE_CONFIG.FIXED_LETTER_ALPHABET.split(''));
+    for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+      const grid = generateGridFast('open');
+      for (const row of findWordRows(grid)) {
+        const allFixed = getAccessibleCells(grid, row).every(c => c.fixed);
+        if (allFixed) continue; // skip fixed words
+        for (let c = 0; c < grid.cols; c++) {
+          const cell = grid.cells[row][c];
+          if (cell.accessible && cell.fixed && cell.letter) {
+            expect(allowed.has(cell.letter)).toBe(true);
+          }
+        }
+      }
+    }
+  });
+});
+
+// =============================================================================
+// fixedWordRowsMayHaveNonHardModifiers
+// =============================================================================
+
+describe('fixedWordRowsMayHaveNonHardModifiers', () => {
+  it('easy/medium: fully-fixed rows have no soft or forbidden modifiers', () => {
+    for (const difficulty of ['easy', 'medium'] as const) {
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('bridge', difficulty);
+        for (const row of findWordRows(grid)) {
+          const cells = getAccessibleCells(grid, row);
+          const allFixed = cells.every(c => c.fixed);
+          if (!allFixed) continue;
+          for (const cell of cells) {
+            for (const rule of getCellRuleTiles(cell)) {
+              expect(rule.type).not.toBe('softMatch');
+              expect(rule.type).not.toBe('forbiddenMatch');
+            }
+          }
+        }
+      }
+    }
+  });
+});
+
+// =============================================================================
+// Adjacent row connectivity
+// =============================================================================
+
+describe('adjacent row connectivity', () => {
+  it.each(['easy', 'medium', 'hard'] as const)(
+    '%s: every adjacent-row boundary has at least one constraint crossing it',
+    (difficulty) => {
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast('open', difficulty);
+        const wordRows = findWordRows(grid);
+
+        for (let j = 1; j < wordRows.length; j++) {
+          const rowA = wordRows[j - 1];
+          const rowB = wordRows[j];
+          let hasCrossing = false;
+
+          // Check row A for modifiers targeting row B
+          for (let c = 0; c < grid.cols && !hasCrossing; c++) {
+            for (const rule of getCellRuleTiles(grid.cells[rowA][c])) {
+              if (rule.type === 'hardMatch' && rule.constraint.pairedRow === rowB) { hasCrossing = true; break; }
+              if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+                  softForbiddenTargetRows(rule.constraint).includes(rowB)) { hasCrossing = true; break; }
+            }
+          }
+
+          // Check row B for modifiers targeting row A
+          for (let c = 0; c < grid.cols && !hasCrossing; c++) {
+            for (const rule of getCellRuleTiles(grid.cells[rowB][c])) {
+              if (rule.type === 'hardMatch' && rule.constraint.pairedRow === rowA) { hasCrossing = true; break; }
+              if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+                  softForbiddenTargetRows(rule.constraint).includes(rowA)) { hasCrossing = true; break; }
+            }
+          }
+
+          expect(hasCrossing).toBe(true);
+        }
+      }
+    },
+  );
+
+  it.each(['bridge', 'semi'] as const)(
+    '%s: adjacent-row boundary connectivity holds (exempt fully-fixed boundaries)',
+    (puzzleType) => {
+      for (let i = 0; i < FUZZ_ITERATIONS; i++) {
+        const grid = generateGridFast(puzzleType, 'easy');
+        const wordRows = findWordRows(grid);
+
+        for (let j = 1; j < wordRows.length; j++) {
+          const rowA = wordRows[j - 1];
+          const rowB = wordRows[j];
+
+          // Skip boundaries adjacent to fully-fixed rows (can't carry modifiers in easy)
+          const aFixed = getAccessibleCells(grid, rowA).every(c => c.fixed);
+          const bFixed = getAccessibleCells(grid, rowB).every(c => c.fixed);
+          if (aFixed || bFixed) continue;
+
+          let hasCrossing = false;
+
+          for (let c = 0; c < grid.cols && !hasCrossing; c++) {
+            for (const rule of getCellRuleTiles(grid.cells[rowA][c])) {
+              if (rule.type === 'hardMatch' && rule.constraint.pairedRow === rowB) { hasCrossing = true; break; }
+              if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+                  softForbiddenTargetRows(rule.constraint).includes(rowB)) { hasCrossing = true; break; }
+            }
+          }
+
+          for (let c = 0; c < grid.cols && !hasCrossing; c++) {
+            for (const rule of getCellRuleTiles(grid.cells[rowB][c])) {
+              if (rule.type === 'hardMatch' && rule.constraint.pairedRow === rowA) { hasCrossing = true; break; }
+              if ((rule.type === 'softMatch' || rule.type === 'forbiddenMatch') &&
+                  softForbiddenTargetRows(rule.constraint).includes(rowA)) { hasCrossing = true; break; }
+            }
+          }
+
+          expect(hasCrossing).toBe(true);
+        }
+      }
+    },
+  );
+});
+
+// =============================================================================
+// Forbidden modifiers from backfill
+// =============================================================================
+
+describe('ensureMinimumRuleTiles includes forbidden', () => {
+  it('generated puzzles sometimes contain forbidden modifiers', () => {
+    let sawForbidden = false;
+    for (let i = 0; i < 500 && !sawForbidden; i++) {
+      const grid = generateGridFast('open', 'easy');
+      for (let r = 0; r < grid.rows; r++) {
+        for (let c = 0; c < grid.cols; c++) {
+          for (const rule of getCellRuleTiles(grid.cells[r][c])) {
+            if (rule.type === 'forbiddenMatch') sawForbidden = true;
+          }
+        }
+      }
+    }
+    expect(sawForbidden).toBe(true);
   });
 });

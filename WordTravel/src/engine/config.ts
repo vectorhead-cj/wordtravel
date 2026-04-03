@@ -1,50 +1,62 @@
 import { Difficulty } from './types';
 
 export interface GenerationProfile {
-  hardMatchPairs: number;
+  minHardMatchPairs: number;
   hardMatchMaxChainLength: number;
-  softMatchTiles: number;
-  forbiddenTiles: number;
+  minSoftMatchModifiers: number;
+  minForbiddenModifiers: number;
   fixedTiles: number;
-  minRuleTilesPerWord: number;
+  minModifiersPerRow: number;
   minCandidatesPerRow: number;
   maxConsecutiveSameLength: number;
   minForbiddenGroupSize: number;
+  maxRulesPerCell: number;
+  permittedSoftAndForbiddenDirections: 'down' | 'bidirectional';
+  fixedWordRowsMayHaveNonHardModifiers: boolean;
 }
 
 export const GENERATION_PROFILES: Record<Difficulty, GenerationProfile> = {
   easy: {
-    hardMatchPairs: 2,
+    minHardMatchPairs: 2,
     hardMatchMaxChainLength: 2,
-    softMatchTiles: 2,
-    forbiddenTiles: 0,
+    minSoftMatchModifiers: 2,
+    minForbiddenModifiers: 1,
     fixedTiles: 3,
-    minRuleTilesPerWord: 1,
+    minModifiersPerRow: 1,
     minCandidatesPerRow: 20,
     maxConsecutiveSameLength: 3,
     minForbiddenGroupSize: 2,
+    maxRulesPerCell: 1,
+    permittedSoftAndForbiddenDirections: 'down',
+    fixedWordRowsMayHaveNonHardModifiers: false,
   },
   medium: {
-    hardMatchPairs: 4,
+    minHardMatchPairs: 4,
     hardMatchMaxChainLength: 2,
-    softMatchTiles: 4,
-    forbiddenTiles: 2,
+    minSoftMatchModifiers: 4,
+    minForbiddenModifiers: 2,
     fixedTiles: 3,
-    minRuleTilesPerWord: 1,
+    minModifiersPerRow: 1,
     minCandidatesPerRow: 5,
     maxConsecutiveSameLength: 3,
     minForbiddenGroupSize: 2,
+    maxRulesPerCell: 1,
+    permittedSoftAndForbiddenDirections: 'down',
+    fixedWordRowsMayHaveNonHardModifiers: false,
   },
   hard: {
-    hardMatchPairs: 4,
+    minHardMatchPairs: 4,
     hardMatchMaxChainLength: 3,
-    softMatchTiles: 3,
-    forbiddenTiles: 2,
+    minSoftMatchModifiers: 3,
+    minForbiddenModifiers: 2,
     fixedTiles: 2,
-    minRuleTilesPerWord: 1,
+    minModifiersPerRow: 1,
     minCandidatesPerRow: 1,
     maxConsecutiveSameLength: 2,
     minForbiddenGroupSize: 2,
+    maxRulesPerCell: 2,
+    permittedSoftAndForbiddenDirections: 'bidirectional',
+    fixedWordRowsMayHaveNonHardModifiers: true,
   },
 };
 
