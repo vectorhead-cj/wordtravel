@@ -162,6 +162,6 @@ export interface GameResult {
   difficulty?: Difficulty;
   successRate?: number;
   averageWordFrequency?: number;
-  backspaceCount?: number;
+  overwriteCount?: number;
 }
 

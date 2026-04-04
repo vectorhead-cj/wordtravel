@@ -116,7 +116,7 @@ export function GameScreen({
   const gridRef = useRef<GridHandle>(null);
   const autoSolverRef = useRef<AutoSolver | null>(null);
   const startTime = useRef(Date.now());
-  const backspaceCountRef = useRef(0);
+  const overwriteCountRef = useRef(0);
   const [hintLevel, setHintLevel] = useState<HintLevel>('off');
   const [solveMode, setSolveMode] = useState<SolveMode>('off');
   const [solveResult, setSolveResult] = useState<SolveFromHereResult | null>(null);
@@ -191,8 +191,8 @@ export function GameScreen({
     setGrid(newGrid);
   };
 
-  const handleBackspaceApplied = useCallback(() => {
-    backspaceCountRef.current += 1;
+  const handleOverwriteApplied = useCallback(() => {
+    overwriteCountRef.current += 1;
   }, []);
 
   const isPuzzleComplete = useCallback((g: GridType): boolean => {
@@ -248,7 +248,7 @@ export function GameScreen({
       difficulty: puzzleMeta?.difficulty,
       successRate: puzzleMeta?.successRate,
       averageWordFrequency,
-      backspaceCount: backspaceCountRef.current,
+      overwriteCount: overwriteCountRef.current,
     };
   }, [puzzleMeta]);
 
@@ -391,7 +391,7 @@ export function GameScreen({
         readOnly={isCompleted}
         onGridChange={handleGridChange}
         onRowValidated={handleRowValidated}
-        onBackspaceApplied={handleBackspaceApplied}
+        onOverwriteApplied={handleOverwriteApplied}
         hintLevel={isCompleted ? 'off' : hintLevel}
         solveOverlay={isCompleted ? null : solveResult}
         scrollContentTopInset={headerBarHeight}
@@ -557,8 +557,8 @@ export function GameScreen({
               {completedResult.uniqueLetterCount != null && (
                 <StatRow label="Unique Letters" value={String(completedResult.uniqueLetterCount)} />
               )}
-              {completedResult.backspaceCount != null && (
-                <StatRow label="Backspaces" value={String(completedResult.backspaceCount)} />
+              {completedResult.overwriteCount != null && (
+                <StatRow label="Overwrites" value={String(completedResult.overwriteCount)} />
               )}
               {completedResult.successRate != null && (
                 <StatRow label="Solve Rate" value={formatSolveRate(completedResult.successRate)} />

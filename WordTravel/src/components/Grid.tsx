@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, Dimensions, Animated, TouchableOpacity, Pressable } from 'react-native';
 import { Grid as GridType, GameMode, HintLevel, RuleTile, getCellRuleTiles, softForbiddenUnidirectionalRotation } from '../engine/types';
 import { SolveFromHereResult } from '../engine/DifficultySimulator';
 import {
@@ -24,7 +24,7 @@ interface GridProps {
   readOnly?: boolean;
   onGridChange: (grid: GridType) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
-  onBackspaceApplied?: () => void;
+  onOverwriteApplied?: () => void;
   hintLevel: HintLevel;
   solveOverlay?: SolveFromHereResult | null;
   scrollContentTopInset?: number;
@@ -48,7 +48,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   readOnly = false,
   onGridChange,
   onRowValidated,
-  onBackspaceApplied,
+  onOverwriteApplied,
   hintLevel,
   solveOverlay,
   scrollContentTopInset = 0,
@@ -65,13 +65,13 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   const blinkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const blinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { currentPosition, errorMessage, handleKeyPress, handleBackspace } = useGridInput({
+  const { currentPosition, errorMessage, handleKeyPress, handleBackspace, handleCellPress } = useGridInput({
     grid,
     mode,
     readOnly,
     onGridChange,
     onRowValidated,
-    onBackspaceApplied,
+    onOverwriteApplied,
   });
 
   const handleKeyPressRef = useRef(handleKeyPress);
@@ -244,16 +244,20 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
                   });
 
                   return (
-                    <CellView
+                    <Pressable
                       key={`${rowIndex}-${colIndex}`}
-                      cell={cell}
-                      cellSize={cellSize}
-                      tileSize={tileSize}
-                      ghostLetter={ghostLetter}
-                      active={isActive}
-                      modifiers={modifiers}
-                      blinkRuleStroke={blinkVisible && blinkTargets.has(`${rowIndex}-${colIndex}`)}
-                    />
+                      onPress={() => handleCellPress(rowIndex, colIndex)}
+                    >
+                      <CellView
+                        cell={cell}
+                        cellSize={cellSize}
+                        tileSize={tileSize}
+                        ghostLetter={ghostLetter}
+                        active={isActive}
+                        modifiers={modifiers}
+                        blinkRuleStroke={blinkVisible && blinkTargets.has(`${rowIndex}-${colIndex}`)}
+                      />
+                    </Pressable>
                   );
                 })}
               </View>

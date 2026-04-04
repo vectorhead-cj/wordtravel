@@ -28,6 +28,23 @@ function findFirstEmptyCell(grid: Grid, mode: GameMode): { row: number; col: num
   return null;
 }
 
+function findNextCell(
+  grid: Grid,
+  mode: GameMode,
+  after: { row: number; col: number },
+): { row: number; col: number } | null {
+  for (let row = after.row; row < grid.rows; row++) {
+    const startCol = row === after.row ? after.col + 1 : 0;
+    for (let col = startCol; col < grid.cols; col++) {
+      const cell = grid.cells[row][col];
+      if (!cell.accessible || cell.fixed) continue;
+      if (mode === 'action' && cell.validation !== 'none') continue;
+      return { row, col };
+    }
+  }
+  return null;
+}
+
 function findLastFilledCell(grid: Grid, mode: GameMode, before: { row: number; col: number } | null): { row: number; col: number } | null {
   let found: { row: number; col: number } | null = null;
 
@@ -52,7 +69,7 @@ interface UseGridInputParams {
   readOnly?: boolean;
   onGridChange: (grid: Grid) => void;
   onRowValidated: (row: number, isValid: boolean) => void;
-  onBackspaceApplied?: () => void;
+  onOverwriteApplied?: () => void;
 }
 
 export function useGridInput({
@@ -61,16 +78,33 @@ export function useGridInput({
   readOnly = false,
   onGridChange,
   onRowValidated,
-  onBackspaceApplied,
+  onOverwriteApplied,
 }: UseGridInputParams) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [manualPosition, setManualPosition] = useState<{ row: number; col: number } | null>(null);
 
-  const currentPosition = useMemo(() => findFirstEmptyCell(grid, mode), [grid, mode]);
+  const autoPosition = useMemo(() => findFirstEmptyCell(grid, mode), [grid, mode]);
+
+  const currentPosition = useMemo(() => {
+    if (!manualPosition) return autoPosition;
+    const cell = grid.cells[manualPosition.row]?.[manualPosition.col];
+    if (!cell || !cell.accessible || cell.fixed) return autoPosition;
+    if (mode === 'action' && cell.validation !== 'none') return autoPosition;
+    return manualPosition;
+  }, [manualPosition, autoPosition, grid, mode]);
 
   const showError = useCallback((message: string) => {
     setErrorMessage(message);
     setTimeout(() => setErrorMessage(null), 1000);
   }, []);
+
+  const handleCellPress = useCallback((row: number, col: number) => {
+    if (readOnly) return;
+    const cell = grid.cells[row]?.[col];
+    if (!cell || !cell.accessible || cell.fixed) return;
+    if (mode === 'action' && cell.validation !== 'none') return;
+    setManualPosition({ row, col });
+  }, [readOnly, grid, mode]);
 
   const handleKeyPress = useCallback((text: string) => {
     if (readOnly) return;
@@ -78,6 +112,11 @@ export function useGridInput({
 
     const letter = text.slice(-1).toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
+
+    const existingLetter = grid.cells[currentPosition.row][currentPosition.col].letter;
+    if (existingLetter) {
+      onOverwriteApplied?.();
+    }
 
     const newGrid = cloneGrid(grid);
     newGrid.cells[currentPosition.row][currentPosition.col].letter = letter;
@@ -91,15 +130,18 @@ export function useGridInput({
       const { validatedGrid, isValid } = validateAndUpdateRow(newGrid, currentPosition.row, mode);
       onGridChange(validatedGrid);
       onRowValidated(currentPosition.row, isValid);
+      setManualPosition(null);
 
       if (!isValid) {
-        const errorMessage = getErrorMessage(validationState);
-        if (errorMessage) {
-          showError(errorMessage);
+        const errorMsg = getErrorMessage(validationState);
+        if (errorMsg) {
+          showError(errorMsg);
         }
       }
+    } else if (manualPosition) {
+      setManualPosition(findNextCell(newGrid, mode, currentPosition));
     }
-  }, [readOnly, grid, mode, currentPosition, onGridChange, onRowValidated, showError]);
+  }, [readOnly, grid, mode, currentPosition, manualPosition, onGridChange, onRowValidated, onOverwriteApplied, showError]);
 
   const handleBackspace = useCallback(() => {
     if (readOnly) return;
@@ -112,14 +154,17 @@ export function useGridInput({
     newGrid.cells[target.row][target.col].state = 'empty';
 
     onGridChange(newGrid);
-    onBackspaceApplied?.();
-  }, [readOnly, grid, mode, currentPosition, onGridChange, onBackspaceApplied]);
+    onOverwriteApplied?.();
+    if (manualPosition) {
+      setManualPosition(target);
+    }
+  }, [readOnly, grid, mode, currentPosition, manualPosition, onGridChange, onOverwriteApplied]);
 
   return {
     currentPosition,
     errorMessage,
     handleKeyPress,
     handleBackspace,
+    handleCellPress,
   };
 }
-
